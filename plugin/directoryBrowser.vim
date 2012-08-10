@@ -397,7 +397,7 @@ nmap <space>x :call g:copyPath() \| silent exe '!start explorer "' . @p . '"'<cr
 " 4- in @x (directory and filename) with /
 " 5- in @f (filename only)
 function! g:copyPath()
-    exe 'normal mf039l"fy$' 
+    exe 'normal mf036l"fy$' 
     call search(g:dirOfStr, 'b') 
     exe 'normal 2w"py$`f' 
     " with \
