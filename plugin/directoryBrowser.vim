@@ -11,7 +11,7 @@
 "		useful, but WITHOUT ANY WARRANTY; without even the implied
 "		warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 "
-" Version: 3.1
+" Version: 3.2
 "
 " Files: plugin/directoryBrowser.vim	
 "
@@ -79,6 +79,9 @@
 " 3.1
 "           - Don't use version 3.0, use version 3.1 instead.
 "           - <space><tab> open default 'browsing history' file called 'dirlist_', useful for fast browsing
+"
+" 3.2
+"           - Modified the behavior of the <space>C command, in some cases it was not changing to the directory
 "
 " Overview
 " --------
@@ -550,7 +553,7 @@ nmap <space>B :tabnew \| call g:listBuffers('bd!')<cr>
 nmap <space>c :call g:cPath() \| exe '!copy ' @p . @f . ' ' @p . @f . '_' . substitute(strftime('%x_%X'), ':', '-', 'g') \| call g:dir(@p)<cr>
 
 " open directory in command prompt
-nmap <space>C :call g:cPath() \| silent exe '!start cmd /k "dir /o:g ' . @p . '"'<cr>
+nmap <space>C :call g:cPath() \| silent exe '!start cmd /k "cd ' . @d . ' & cd ""' . @p . '"" & dir /o:g"'<cr>
 
 " new directory
 nmap <space>d :unlet! t \| let t = input('Directory name: ') \| :call g:cPath() \| call mkdir(t) \| call g:dir(@p)<cr>
@@ -704,6 +707,8 @@ endfunction
 " 4- in @x (directory and filename) with /
 " 5- in @f (filename only)
 function! s:divPath()
+    " drive only
+    let @d = strpart(@p, 0, 2)
     " with \
     let @p = @p . '\'
     let @p = substitute(@p, '\\\\', '\\', '')
