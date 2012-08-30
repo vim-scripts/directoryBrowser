@@ -11,9 +11,9 @@
 "		useful, but WITHOUT ANY WARRANTY; without even the implied
 "		warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 "
-" Version: 3.2
+" Version: 3.3
 "
-" Files: plugin/directoryBrowser.vim	
+" Files: plugin/directoryBrowser.vim
 "
 " History:
 " 1.0   2012-08-04
@@ -59,7 +59,7 @@
 "           - <space>q show available volumes
 "           - <space>Q show available volumes with names and details about shares and computers
 "           - <space>T open directory in new tab
-"           - <space>u open filename in clipboard current tab
+"           - <space>u open filename in clipboard in current tab
 "           - <space>U open filename in clipboard in new tab
 "           - <space>w to save (append) directory listing to disk (useful for shorcuts)
 "           - <space>W to save (overwrite) directory listing to disk
@@ -82,6 +82,9 @@
 "
 " 3.2
 "           - Modified the behavior of the <space>C command, in some cases it was not changing to the directory
+" 3.3
+"           - <space>J show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
+"           - Removed a tab character that was invisible after the <space>z command
 "
 " Overview
 " --------
@@ -243,6 +246,7 @@
 " <space>i      go to previous dir listing (if many listings were done in the same buffer it allows to go directly back to a previous listing)
 " <space>I      open file in internet explorer
 " <space>j      preview file (rapidly includes the file into the current buffer. Do <space>k to remove the file and go to next file in the dir listing. Doing successively <space>j and <space>k allows to preview quickly one file after another. If directory listings are saved to disk, they may be quickly opened using this mapping <space>j to list them and browse them.) 
+" <space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
 " <space>k      used with preview file to remove the preview and go down one line to next file to preview
 " <space>l      list directory (go inside a directory)
 " <space>L      list directory recursively (go inside subdir)
@@ -293,7 +297,7 @@
 " <space>S      list current directory in a split window (no need to have already a directory browser opened)
 " <space>t      open file in tab
 " <space>T      list current directory in a tab (no need to have already a directory browser opened) 
-" <space>u      open filename in clipboard current tab
+" <space>u      open filename in clipboard in current tab
 " <space>U      open filename in clipboard in new tab
 " <space>v      open file in vsplit
 " <space>V      list current directory in a vsplit window (no need to have already a directory browser opened) 
@@ -585,6 +589,9 @@ nmap <space>I :call g:cPath() \| silent exe '!start "c:\program files\internet e
 " preview file (include the file and undo "u" (or <space>k to remove it) (useful also to view content of lnk files and copy their target)
 nmap <space>j :call g:cPath() \| exe 'normal zt' \| exe 'r ' . @p . @f<cr>
 
+" show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
+nmap <space>J :split \| enew \| exe 'normal "HPGdd'<cr>
+
 " used with preview file to remove the preview and go down one line to next file to preview
 nmap <space>k :exe 'normal uj'<cr>
 
@@ -673,10 +680,10 @@ nmap <space>y :call g:dirSplit(fnamemodify(@*, ":p:h"))<cr>
 nmap <space>Y :call g:dir(fnamemodify(@*, ":p:h"))<cr>
 
 " open utl link under cursor in split windows (utl plugin required)
-nmap <space>z :Utl openLink underCursor split<cr>	
+nmap <space>z :Utl openLink underCursor split<cr>
 
 " open utl link under cursor in tab (utl plugin required)
-nmap <space>Z :Utl openLink underCursor tabe<cr>	
+nmap <space>Z :Utl openLink underCursor tabe<cr>
 
 " Check clues to know if the current file (buffer) is a dirlisting from this plugin
 function! s:isDir()
@@ -719,6 +726,8 @@ function! s:divPath()
     " with /
     let @z = substitute(@p, '\\', '/', 'g')
     let @x = @z . @f
+    " append paths to browsing history (see usage above)
+    let @H = "<url:vimscript: call g:dirSplit('" . @z . "') \| call search('" . @f . "')>"
 endfunction
 
 " If current file is a directoryBrowser, copy the path and the filename from the directory listing
@@ -801,6 +810,10 @@ function! g:dir(path)
        let l:recursive = '/S' 
     else
        let l:recursive = '' 
+    endif
+    " If path contains a filename, remove the filename and list the directory of this file
+    if !isdirectory(l:path)
+        let l:path = fnamemodify(l:path, ":p:h:h") . '\'
     endif
     normal G
     exe 'r! dir ' . g:dirSort . ' ' . g:dirAttributes . ' ' . g:dirTime . ' ' . l:recursive . ' ' . g:dirOwner . ' /4 "' . l:path . g:dirFilter . '"'
