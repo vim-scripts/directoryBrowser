@@ -1,399 +1,497 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=4165
 
-File: plugin/directoryBrowser.vim - Directory Browser - 
-  		  Directory listing and file operation in vim
-Author: Alexandre Viau <alexandreviau@gmail.com>
-Maintainer: Alexandre Viau <alexandreviau@gmail.com>
+" ------------------------------------------------------------------------------
+" File: plugin/directoryBrowser.vim - Directory Browser - 
+"       Directory listing and file operation in vim
+" Author: Alexandre Viau <alexandreviau@gmail.com>
+" Maintainer: Alexandre Viau <alexandreviau@gmail.com>
+"
+" Licence: This program is free software; you can redistribute it and/or
+"   modify it under the terms of the GNU General Public License.
+"   See http://www.gnu.org/copyleft/gpl.txt
+"   This program is distributed in the hope that it will be
+"   useful, but WITHOUT ANY WARRANTY; without even the implied
+"   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+"
+" Version: 4.2
+"
+" Files: plugin/directoryBrowser.vim
+"
+" History:
+" 1.0   2012-08-04
+"           - First release
+" 2.0   2012-08-09
+"           - Put 36 caracters instead of 39 between beginning of line and filename in cPath
+"           - Added \. to \a to \z and \A to \Z
+" 3.0   2012-08-23
+"           - \a to \z list a:\ to z:\ root directories in current buffer (appended)
+"           - \A to \Z list a:\ to z:\ root directories in new buffer
+"           - -a to -z list a:\ to z:\ root directories in split window
+"           - -A to -Z list a:\ to z:\ root directories in vertical split window
+"           - =a to =z list a:\ to z:\ root directories in new tab
+"           - f/ Change backslash to forwardslash on the current line
+"           - f<Bslash> Change forwardslash to backslash on the current line
+"           - ff<Bslash> Change backslash to double backslash on the current line
+"           - fff<Bslash> Change forwardslash to double backslash on the current line
+"           - ffff<Bslash> Change doublebackslash to backslash the current line
+"           - <space><f5> copy current file's path+filename relative to current directory with backslash
+"           - <space><f6> copy current file's path+filename relative to current directory with forward slash
+"           - <space><f7> copy current file's path only (with backslash)
+"           - <space><f8> copy current file's path only (with forward slash)
+"           - <space><f9> copy current file's filename only (without path)
+"           - <space><f10> copy current file's path+filename relative to current directory with the line number (in utl format)
+"           - <space>! Layout 1 (2 vertical panes)
+"           - <space>@ Layout 2 (2 horizontal panes)
+"           - <space># Layout 3 (3 panes: 2 vertical, 1 horizontal)
+"           - <space>$ Layout 4 (4 panes)
+"           - <space>^ Layout 6 (6 panes)
+"           - <space>* Layout 8 (8 panes)
+"           - <space>) Layout 10 (10 panes)
+"           - <space>- toggle show file owner
+"           - <space>0 to change directory attributes
+"           - <space>9 to change directory time display and sorting
+"           - <space>a interchanged with <space>A
+"           - <space>b changed list buffers to open in new tab instead of opening in current tab (not related to directory browsing but useful. Requires utl.vim)
+"           - <space>I open file in internet explorer
+"           - <space>L to list current directory and its subdirectories recursively
+"           - <space>M open a "contextual menu" to run operations on files (requires the utl plugin)
+"           - <space>n new file in new tab
+"           - <space>N new file in current tab
+"           - <space>O open file in notepad
+"           - <space>q show available volumes
+"           - <space>Q show available volumes with names and details about shares and computers
+"           - <space>T open directory in new tab
+"           - <space>u open filename in clipboard in current tab
+"           - <space>U open filename in clipboard in new tab
+"           - <space>w to save (append) directory listing to disk (useful for shorcuts)
+"           - <space>W to save (overwrite) directory listing to disk
+"           - <space>X to show directory and subdirectories structure of current directory using the "tree" command
+"           - <space>y list the directory of the path in clipboard (with or without filename) in a new split window
+"           - <space>Y list the directory of the path in clipboard (with or without filename) in the current buffer
+"           - <space><enter> open utl link under cursor (utl plugin required)
+"           - <space>z open utl link under cursor in a split window (utl plugin required)
+"           - <space>Z open utl link under cursor in tab (utl plugin required)
+"           - Remove dirOfStr language requirement. Searching for a language specific string was not needed. 
+"           - Changes with cursor position and listing position specially using <space>i and <space>m. 
+"           - Set g:dir instead of g:dirBuf as defaut when doing \A..\Z (listing drives using capital letters) with is more convenient because this way one my list content of another drive in the same buffer using the \ shortcut key so one may have all his directory browsing inside the same buffer, with is nice if saved to file using <space>w for later viewing and continuation. 
+"           - Added <space>F to list the directory of the current file
+"           - Changed behavior of <space>i "go to previous dir listing", now it will go to top of current dir then to previous dir if <space>i is typed a second time. 
+"           - Modified search string to find current directory (not to conflict with the directory showned by the tree command)
+"           - uu, uuu, uuuu, uuuuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
+" 3.1
+"           - Don't use version 3.0, use version 3.1 instead.
+"           - <space><tab> open default 'browsing history' file called 'dirlist_', useful for fast browsing
+" 3.2
+"           - Modified the behavior of the <space>C command, in some cases it was not changing to the directory
+" 3.3
+"           - <space>J show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
+"           - Removed a tab character that was invisible after the <space>z command
+"
+" 4.0       - 2012-09-04 11:43:43 (mar.) Changes to many code not to use registers to keep paths info, but global variables instead. These global variables may be used anywhere in vim, and if the registers are needed to paste path information, do <space>p to copy the path info from the variables to the registers. Now registers will not be overwritten by the plugin except for the @H register which contains the browsing history.
+"           - 2012-09-04 11:45:27 (mar.) There are new global variables similar to the variable to keep path info, but they keep the previous file path info. This is used to execute actions from one window or tab to another, one example is the contextual menu, other example may be project files with link to compile, run etc.
+"           - 2012-09-03 11:05:17 (lun.) Modified <space>M now the contextual menu is very useful as it opens in a split window and may execute actions on the file where the cursor was before switching to the menu window. That file may be a file in edition or a directory listing. So instead of copying links at the top of the file like in previous versions of the plugin, now the menu is opened in a split window (or a tab). It is still possible to put links at the top of files if the links are specific to the file, but it is more convenient to have it in a split window. Autocommands onEnter and onLeave window/tab where added to make this possible, these autocommands copy the paths when entering or leaving a window/tab and keep the previous path in registers and if the file moved to is the menu file, the current file path registers do not contain the path of the menu file like other files but they contain the path of the previous file, so that it may be used for lauching actions on the previous file be it a file in edition or a file in a directory listing.
+"           - 2012-09-03 23:25:23 (lun.) I included a big part of my own to-date contextual menu as an example in this plugin usage section. This one works with the new modifications concerning the menu file displayed in a window/tab.
+"           - 2012-09-04 00:18:07 (mar.) The paths are not copied anymore to the registers at each operations, only when the user presses <space>p the paths are copied to register for pasting. 
+"           - 2012-08-31 05:36:44 (ven.) Modified <space><esc> to execute the command in the current path of the current directory listing if no path specified.
+"           - 2012-08-31 05:41:22 (ven.) Modified <space>i and <space>m to changed copy the path at the same time the listing is changed and to change vim's directory to the copied directory.
+"
+" 4.1       - 2012-09-04 22:08:16 (mar.) Fix 2 places in code (in dirDelete and recursive grep) that were not changed to use the path variables.
+"           - 2012-09-05 23:38:32 (mer.) Added <space><enter> open utl link under cursor (utl plugin required)
+" 4.2
+"           - 2012-09-08 14:47:07 (sam.) Modified <space>h, <space>l behavior. Added the ability to remember last position of the cursor in a directory so that if a user returns to a previously browsed directory, the cursor will position itself to the file it was last time in that directory.
+"
+" 4.3       
+"           - 2012-09-11 22:11:06 (mar.) Corrected bug concerning the @H browsing history register.
+"           - 2012-09-11 22:11:46 (mar.) Corrected issues with cursor position on previously browsed files and directory.
+"           - 2012-09-11 21:30:55 (mar.) Corrected bug when first time vim opened and directory listed, there was an error message saying that empty dictionnary, that is because no directory was browsed so the variables to index the dictionnary were empty.
+"           - 2012-09-11 21:30:49 (mar.) Small amelioration of the isDir() detection function, added \s\{4\} to the time regex. I add problems with a file menu that this function was detecting as a directory listing but it was not.
+"           - 2012-09-11 22:36:21 (mar.) Two commands added to the compile/run sample menu in the help section, these 2 commands are to source a vim script and source a vim macro.
+"
+" Overview
+" --------
+" This plugin is currently only for Windows but could be easily ported for another OS. Some optional features require cygwin and/or the utl plugin.
+"
+" The dir plugin allows fast directory browsing inside vim buffers, 
+" split windows or tabs. It uses the windows dir command to list
+" directories inside buffers and it provides several commands
+" to be executed on the listed files or directories including
+" dir listing, sorting, filtering, recursive file searching, 
+" recursive file greping, file renaming, file deleting,
+" file cloning, file executing and file opening/editing in buffer, 
+" tab, window and external tools and changing listing options.
+"
+" The way it works is simple. It insert the output of the windows dir
+" command at the end of a buffer and then after the user has moved
+" the cursor to one of the lines of this directory listing and
+" executes one of the pre-defined (or user defined) command mappings, 
+" the path of the directory and the name of the file/directory are 
+" copied to some registers and are used to execute the command on the 
+" file or directory.
+"
+" For example if the command mapping \C is executed the directory of
+" c:\ is listed at the end of a new split window (every drive may be 
+" accessed using \A, \B, \C, ..., \Z or \a..\z to append a listing to current buffer).
+"
+"  Volume in drive C has no label.
+"  Volume Serial Number is C0B2-2A46
+" 
+"  Directory of c:\
+" 
+" 2013-05-08  22:01       <DIR>          .vim-fuf-data
+" 2012-07-10  23:22       <DIR>          clip
+" 2012-07-23  06:36       <DIR>          cygwin
+" 2012-07-31  12:29       <DIR>          Documents and Settings
+" 2012-08-01  04:27       <DIR>          oraclexe
+" 2012-07-31  12:27       <DIR>          Program Files
+" 2012-08-02  10:32       <DIR>          repository
+" 2012-08-02  01:58       <DIR>          temp
+" 2012-07-08  23:24       <DIR>          test
+" 2012-08-03  23:31       <DIR>          tmp
+" 2012-08-02  08:01       <DIR>          WINNT
+" 2012-08-04  09:11               27я396 _viminfo
+" 2012-07-07  00:46                  128 test.ctl
+" 2012-07-07  00:45                   94 test.sql
+" 2012-07-26  00:05                   74 test.txt
+"               10 File(s)         95я932 bytes
+"               12 Dir(s)   2я694я692я864 bytes free
+"
+" If the user moves the cursor on the "Program Files" for example,
+" and presses <space>l, the content of the "Program Files"
+" directory will be listed in this same buffer after this listing 
+" of the c:\ directory. The listing of the "Program Files"
+" directory will be positionned correctly at the top of the screen
+" so the content of the c:\ will not be seed anymore unless the
+" user moves the cursor upwards outside of the current screen. If
+" The user presses then <space>h the directory will go one level
+" up the directory tree back to the c:\ directory. 
+"
+" So all the commands are executed on the line where the cursor is 
+" positionned to. Many commands are already available to be
+" be executed on the directories or files where the cursor is 
+" positionned to, and also the users may add some to their
+" owned vimrc file like this user defined command for example here
+" below which sends the current file where the cursor is positionned 
+" to an external tool:
+"
+" nmap <space>y :call g:cPath() \| silent exe '!start I:\data\AutoHotkey\repository_usb_only\repository.exe "' . g:dirCs . '"'<cr>
+"
+" This mapping is in my vimrc and not in the plugin because it is
+" a tool that is used only by myself. Here the g:cPath() function
+" will take care to copy the path of the current file to the variable
+" g:dirCs, which contains the full path, then
+" then the external command is executed on this path. So many of the
+" commands work this way.
+"
+" The movements between directories happen quite fast.
+" The dir command was used because it performed faster on the test
+" computer than the cygwin ls command. So portability was somehow
+" sacrificed for performance. But it would be easy to adapt this
+" plugin to make it work with the ls command on linux if the
+" dir command is not available. 
+"
+" Note that when the g:dir or its variants g:dir, g:dirTab, g:dirSplit etc
+" are executed, the encoding is changed so that the dir command output
+" is displayed correctly. The encoding is changed with the following command
+" set encoding=cp850 " DOS 850: Western European
+" You may change this encoding or remove/comment the command if you 
+" don't want your encoding to be changed each time a dir command is issued.
+"
+" Installation
+" ------------
+" Copy the directoryBrowser.vim file to the vim plugin directory and restart vim,
+" or open directoryBrowser.vim for editing and do :so %.
+"
+" Optionnaly install the utl.vim plugin developed by Stephan Bittner,
+" which add text hyperlinking habilities. Used with this directoryBrowser.vim plugin, 
+" it will allow to jump to the files hyperlinked in the results of
+" the grep and find commands as well as the buffer listing commands. 
+"
+" Usage 
+" -----
+" Note that any mappings may be changed. If you don't like the usage of <space> or \ before some commands you may change this easily. <space> may be changed by <tab> for example.
+"
+" \a to \z      list a:\ to z:\ root directories in current buffer (appended)
+" \A to \Z      list a:\ to z:\ root directories in new buffer
+" -a to -z      list a:\ to z:\ root directories in split window
+" -A to -Z      list a:\ to z:\ root directories in vertical split window
+" =a to =z      list a:\ to z:\ root directories in new tab
+" f/            Change backslash to forwardslash on the current line
+" f<Bslash>     Change forwardslash to backslash on the current line
+" ff<Bslash>    Change backslash to double backslash on the current line
+" fff<Bslash>   Change forwardslash to double backslash on the current line
+" ffff<Bslash>  Change doublebackslash to backslash the current line
+" <space>;      Command shortcuts (Optional. This dictionnary g:cmdDict may be moved to your vimrc and may contain the commands you want. It is used with the g:cmdExe function and the mapping <space>; and it is not absolutly part of this plugin. I put it inside the plugin because it may be a fast way to open directories). If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
+" <space>:      Show list of command shortcuts
+" <space><esc>  execute command on the vim command line (fast if escape remapped to capslock). If no path specified, executes in the current path of current directory listing.
+" <space><tab>  open default 'browsing history' file called 'dirlist_', useful for fast browsing
+" <space><f3>   search files (including in subdirectories). Cygwin should be installed for this command to work.
+" <space><f4>   grep files (including in subdirectories). Cygwin should be installed for this command to work. It will ask for keywords to search and a file filter by which by default is *.
+" <space><f5>   copy current file's path+filename relative to current directory with backslash
+" <space><f6>   copy current file's path+filename relative to current directory with forward slash
+" <space><f7>   copy current file's path only (with backslash)
+" <space><f8>   copy current file's path only (with forward slash)
+" <space><f9>   copy current file's filename only (without path)
+" <space><f10>  copy current file's path+filename relative to current directory with the line number (in utl format)
+" <space>!      Layout 1 (2 vertical panes)
+" <space>@      Layout 2 (2 horizontal panes)
+" <space>#      Layout 3 (3 panes: 2 vertical, 1 horizontal)
+" <space>$      Layout 4 (4 panes)
+" <space>^      Layout 6 (6 panes)
+" <space>*      Layout 8 (8 panes)
+" <space>)      Layout 10 (10 panes)
+" <space>-      toggle show file owner
+" <space>1      sort directory by name ascending
+" <space>2      sort directory by name descending
+" <space>3      sort directory by type ascending
+" <space>4      sort directory by type descending
+" <space>5      sort directory by size ascending
+" <space>6      sort directory by size descending
+" <space>7      sort directory by date ascending
+" <space>8      sort directory by date descending
+" <space>0      to change directory attributes
+" <space>9      to change directory time display and sorting
+" <space>.      reload directory (refresh)
+" <space>a      write path to open (windows explorer address bar like) (append to current buffer)
+" <space>A      write path to open (windows explorer address bar like) (open in new buffer)
+" <space>b      list buffers to open in new tab (not related to directory browsing but useful. Requires utl.vim)
+" <space>B      list buffers to delete (not related to directory browsing but useful. Requires utl.vim)
+" <space>c      duplicate (clone) file
+" <space>C      open current directory in command prompt
+" <space>d      new directory
+" <space>D      delete file or directory
+" <space>e      open file in current buffer
+" <space>f      Set filter to show only certain files example: *.txt or pic*.jpg
+" <space>F      list directory of current file
+" <space>g      grep current file (file is opened inside vim and vimgrep is used. No need for cygwin here.)
+" <space>h      up directory, locate where the cursor was last time in this directory
+" <space>i      go to previous dir listing (if many listings were done in the same buffer it allows to go directly back to a previous listing)
+" <space>I      open file in internet explorer
+" <space>j      preview file (rapidly includes the file into the current buffer. Do <space>k to remove the file and go to next file in the dir listing. Doing successively <space>j and <space>k allows to preview quickly one file after another. If directory listings are saved to disk, they may be quickly opened using this mapping <space>j to list them and browse them.) 
+" <space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
+" <space>k      used with preview file to remove the preview and go down one line to next file to preview
+" <space>l      list directory (go inside subdir), locate where the cursor was last time in this directory
+" <space>L      list directory recursively (go inside subdir)
+" <space>m      go to next dir listing (if many listings were done in the same buffer it allows to go directly to the next listing)
+" <space>M      open a "contextual menu" in a split window to run operations on files. This requires the utl plugin. The contextual menu is a text file containing utl links that are executed using paths saved to registers. For example here's the content of a contextual menu file, it contains some links to compile csharp code and to edit the menu itself, you may create a menu to your liking.
+"- Edit
+"<url:vimscript:echo      'editpad pro'             | exe '!start Z:\\Apps\\JGSoft\\EditPadPro7\\EditPadPro7.exe ' . g:dirPs>
+"<url:vimscript:echo      'excel'                   | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\EXCEL.EXE ' . g:dirPs>
+"<url:vimscript:echo      'gnumeric'                | exe '!start "Z:/Apps/Portable/GnumericPortable/GnumericPortable.exe" ' . g:dirPs>
+"<url:vimscript:echo      'visual studio'           | exe '!start devenv.exe /edit ' . g:dirPs>
+"<url:vimscript:echo      'word'                    | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\WINWORD.EXE ' . g:dirPs>
+"<url:vimscript:echo      'wordpad'                 | exe '!start C:\\Program Files\\Windows NT\\Accessoires\\wordpad.exe ' . g:dirPs>
+"- Open
+"<url:vimscript:echo      '7zip'                    | exe '!start z:\\Apps\\Portable\\LiberKey\\Apps\\7Zip\\App\\7-Zip\\7zFM.exe ' . g:dirPs>
+"<url:vimscript:echo      'dotpeek'                 | exe '!start z:\\Apps\\Portable\\dotPeek\\dotPeek.exe ' . g:dirPs>
+"<url:vimscript:echo      'firefox'                 | exe '!start \"C:\\Program Files\\Mozilla Firefox\\firefox.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'flv player'              | exe '!start \"Z:\\Apps\\Portable\\FLV Player\\FLVPlayer.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'foxit reader'            | exe '!start \"Z:\\Apps\\Portable\\FoxitReader\\Foxit Reader.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'gvim'                    | exe '!start I:\\apps\\Batch\\GVim.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro'              | exe '!start I:\\apps\\Batch\\GVimMacro.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source'             | exe '!start I:\\apps\\Batch\\GVimSource.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim1'                   | exe '!start I:\\apps\\Batch\\GVim1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro1'             | exe '!start I:\\apps\\Batch\\GVimMacro1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source1'            | exe '!start I:\\apps\\Batch\\GVimSource1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim2'                   | exe '!start I:\\apps\\Batch\\GVim2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro2'             | exe '!start I:\\apps\\Batch\\GVimMacro2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source2'            | exe '!start I:\\apps\\Batch\\GVimSource2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim3'                   | exe '!start I:\\apps\\Batch\\GVim3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro3'             | exe '!start I:\\apps\\Batch\\GVimMacro3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source3'            | exe '!start I:\\apps\\Batch\\GVimSource3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim4'                   | exe '!start I:\\apps\\Batch\\GVim4.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro4'             | exe '!start I:\\apps\\Batch\\GVimMacro4.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source4'            | exe '!start I:\\apps\\Batch\\GVimSource4.bat ' . g:dirPs>
+"<url:vimscript:echo      'ildasm'                  | exe '!start C:\\Program Files\\Microsoft Visual Studio 8\\SDK\\v2.0\\Bin\\ildasm.exe ' . g:dirPs>
+"<url:vimscript:echo      'ilspy'                   | exe '!start Z:\\Apps\\Portable\\ILSpy\\ILSpy.exe ' . g:dirPs>
+"<url:vimscript:echo      'mspaint'                 | exe '!start C:\\windows\\system32\\mspaint.exe ' . g:dirPs>
+"<url:vimscript:echo      'picpick'                 | exe '!start I:\\apps\\PicPick\\picpick.exe ' . g:dirPs>
+"<url:vimscript:echo      'picpick win2k'           | exe '!start I:\\apps\\PicPick\\picpickWin2k.exe ' . g:dirPs>
+"<url:vimscript:echo      'powergrep file'          | exe '!start I:\\apps\\Batch\\PowerGrepFile.bat ' . g:dirPs>
+"<url:vimscript:echo      'powergrep folder'        | exe '!start I:\\apps\\Batch\\PowerGrepFolder.bat ' . g:dirPs>
+"<url:vimscript:echo      'wink'                    | exe '!start Z:\\Apps\\Portable\\Wink\\Wink.exe ' . g:dirPs>
+"- Copy to
+"<url:vimscript:echo      'file to repository'      | exe '! I:/data/AutoHotkey/repository.exe ' . g:dirPs>
+"<url:vimscript:echo      'file to repository (usb)'| exe '! I:/data/AutoHotkey/repository_usb_only/repository.exe ' . g:dirPs>
+"<url:vimscript:echo      'dir to repository'       | exe '! del ' . g:dirPv . '.7z & z:\\vifm\\runtime\\commands\\7z a ' . g:dirPv . '.7z ' . g:dirPv . '\\* & i:\\data\\autohotkey\\repository.exe ' . g:dirPv . '.7z /c & del ' . g:dirPv . '.7z'>
+"<url:vimscript:echo      'dir to repository (usb)' | exe '! del ' . g:dirPv . '.7z & z:\\vifm\\runtime\\commands\\7z a ' . g:dirPv . '.7z ' . g:dirPv . '\\* & i:\\data\\autohotkey\\repository_usb_only\\repository.exe ' . g:dirPv . '.7z /c & del ' . g:dirPv . '.7z'>
+"<url:vimscript:echo      'sendto'                  | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\&#039 . $username . '\\SendTo\"'>
+"<url:vimscript:echo      'app_data_temp'           | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\&#039 . $username . '\\Local Settings\\Application Data\\Temp\"'>
+"<url:vimscript:echo      'c_temp'                  | exe '! copy \"' . g:dirPs . '\" c:\\temp'>
+"<url:vimscript:echo      'c_tmp'                   | exe '! copy \"' . g:dirPs . '\" c:\\tmp'>
+"<url:vimscript:echo      'internet'                | exe '! copy \"' . g:dirPs . '\" I:\\data\\Shortcuts\\Internet'>
+"<url:vimscript:echo      'local_set_temp'          | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\&#039 . $username . '\\Local Settings\\Temp\"'>
+"<url:vimscript:echo      'z_data_temp'             | exe '! copy \"' . g:dirPs . '\" z:\\data\\temp'>
+"<url:vimscript:echo      'z_temp'                  | exe '! copy \"' . g:dirPs . '\" z:\\temp'>
+"<url:vimscript:echo      'types'                   | setqflist([]) | exe 'vimgrepadd /\\(\^\\s*\\|static.*\\s\\|public.*\\s\\|private.*\\s\\|internal.*\\s\\|protected.*\\s\\|sealed.*\\s\\)\\(class\\|struct\\|enum\\|delegate\\|event\\|delegates\\)/gj' . g:dirPv | copen>
+"- Compile/run
+"<url:vimscript:echo      'autohotkey'              | let t = g:dirPs | exe '! z:/Apps/Portable/AutoHotkey/AutoHotkey.exe ' . t>
+"<url:vimscript:echo      'bash script'             | let t = g:dirPs | split | enew | exe \"r! c:/cygwin/bin/bash.exe \" . t>
+"rem <url:vimscript:echo  'batch files'             | let t = g:dirPs | split | enew | exe \"r! \" . t>
+"<!-- <url:vimscript:echo 'cs (copy app.config)'    | exe '!copy ' . g:dirPv . ' c:\\t.exe.config'> -->
+"' <url:vimscript:echo    'hta'                     | exe '! mshta.exe ' . g:dirPs>
+"<!-- <url:vimscript:echo 'html to pdf (+open)'     | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . g:dirPs . ' -o t.pdf & t.pdf'>
+"<url:vimscript:echo      'html to pdf'             | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . g:dirPs . ' -o t.pdf'>
+"// <url:vimscript:echo   'php'                     | let t = g:dirPs | split | enew | exe \"r! Z:/Apps/Portable/php/php.exe \" . t>
+"-- <url:vimscript:echo   'pl/sql'                  | let t = g:dirPs | split | enew | exe \"r! sqlplus.exe -s hr/hr @\" . t>
+"' <url:vimscript:echo    'vbscript'                | let t = g:dirPs | split | enew | execute \"r! cscript.exe /nologo \" . t>
+" <url:vimscript:echo    'vim (source)'             | let t = g:dirPx | split | enew | exe \"source \" . t>
+" <url:vimscript:echo    'vim (macro)'              | let t = g:dirPx | split | enew | exe \"source! \" . t>
+"- C# code
+"// <url:vimscript:echo   'snippet (load)'          | source i:/data/scripts/vim/cs_snip.vim>
+"// <url:vimscript:echo   'snippet (edit)'          | split | e! i:/data/scripts/vim/cs_snip.vim>
+"// <url:vimscript:echo   'cs ms (help)'            | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /?' | normal ggdd>
+"// <url:vimscript:echo   'cs ms (compile+run)'     | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . v | r! c:/t.exe>
+"// <url:vimscript:echo   'cs ms (compile)'         | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . v >
+"// <url:vimscript:echo   'cs ms (compile_dll)'     | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /target:library /out:c:\\t.dll /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll ' . v>
+"// <url:vimscript:echo   'cs ms (run)'             | split | enew | r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe>
+"// <url:vimscript:echo   'cs mono (help)'          | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /?' | normal ggdd>
+"// <url:vimscript:echo   'cs mono (compile+run)'   | let t = g:dirPs | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll /out:c:\\t.exe ' . t | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
+"// <url:vimscript:echo   'cs mono (compile)'       | let t = g:dirPs | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll /out:c:\\t.exe ' . t >
+"// <url:vimscript:echo   'cs mono (run)'           | split | enew | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
+"<!-- <url:vimscript:echo 'cs (copy app.config)'    | exe '!copy ' . g:dirPv . ' c:\\t.exe.config'> -->
+"// <url:vimscript:echo   'types'                   | exe 'vimgrepadd /\\(\^\\s*\\|static.*\\s\\|public.*\\s\\|private.*\\s\\|internal.*\\s\\|protected.*\\s\\|sealed.*\\s\\)\\(class\\|struct\\|enum\\|delegate\\|event\\|delegates\\)/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'properties'              | exe 'vimgrepadd /\\s\\(get\\|set\\)\\(\\s\\|;\\)/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'methods'                 | exe 'vimgrepadd /\\(static\\|public\\|private\\|internal\\|protected\\).*(\\(\\a\\|)\\)\\(;\\)\\@!/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'exceptions'              | exe 'vimgrepadd /\\scatch\\s/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'instanciations (new)'    | exe 'vimgrepadd / new .*;/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   '[MET] Console.Write'     | exe 'vimgrepadd /Console.Write/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   '[MET] Format'            | exe 'vimgrepadd /Format(/gj ' . g:dirPx | copen>
+"- Vimscript code
+" <url:vimscript:echo   'functions'                | exe 'vimgrepadd /^\\(fu\\|fun\\|function\\)\\(!\\|\\s\\).*/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'variables'                | exe 'vimgrepadd /^let.*/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'mappings'                 | exe 'vimgrepadd /^\\(map\\|nmap\\|imap\\|abb\\)/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'autocommands'             | exe 'vimgrepadd /\\(au\\|autocommand\\)\\(!\\|\\s\\)/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'comments'                 | exe 'vimgrepadd /^\"/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'echo'                     | exe 'vimgrepadd /echo/gj ' . g:dirPx | copen>
+" <space>n      new file in new tab
+" <space>N      new file in current tab
+" <space>o      open list dir pointed to by a windows .lnk file (dosen't work for all .lnk to directory files, to improve)
+" <space>O      open file in notepad
+" <space>p      copy file path and name. The path is copied in several formats to different variables. <space>p will refresh these variables with current path and copy those to corresponding registers ex: g:dirPz to register @z, g:dirPf to register @f (the exception is g:dirPs to register @*). Often the paths needs to be pasted to files for linking or documentation etc. See function s:divPath()
+"                  1- in g:dirCp (directory only) with \
+"                  2- in g:dirC* (directory and filename) with \ 
+"                  3- in g:dirCz (directory only) with /
+"                  4- in g:dirCx (directory and filename) with /
+"                  5- in g:dirCf (filename only)
+" <space>P      show current path
+" <space>q      show available volumes
+" <space>Q      show available volumes with names, plus, details about shares and computers
+" <space>r      run file
+" <space>R      rename file or directory
+" <space>s      open file in split
+" <space>S      list current directory in a split window (no need to have already a directory browser opened)
+" <space>t      open file in tab
+" <space>T      list current directory in a tab (no need to have already a directory browser opened) 
+" <space>u      open filename in clipboard in current tab
+" <space>U      open filename in clipboard in new tab
+" <space>v      open file in vsplit
+" <space>V      list current directory in a vsplit window (no need to have already a directory browser opened) 
+" <space>w      write append directory listing to disk
+" <space>W      write overwrite directory listing to disk
+" <space>x      open current directory in windows explorer
+" <space>X      Show tree of directory and subdirectories using the tree command
+" <space>y      list the directory of the path in clipboard (with or without filename) in a new buffer
+" <space>Y      list the directory of the path in clipboard (with or without filename) in the current buffer
+" <space><enter>open utl link under cursor (utl plugin required)
+" <space>z      open utl link under cursor in a split window (utl plugin required)
+" <space>Z      open utl link under cursor in tab (utl plugin required)
+" uu, uuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
+"
+" Bookmarks tip: To make quick bookmarks to files and directories, use vim usual marks with m and ' or ` (:help marks) to points to files and directories in a dir listing since these are buffers and files if written to disk. Use <space>w or <space>W to write a listing to disk. Since the dir listings are files, they can be edited and annoted like any files and one could edit his/her own directory listings to group together in a file related directories. For example I created a file c:\dirlist_doc which contains 2 directories with documentation in pdf etc. When I open this c:/dirlist_doc file, I find all my docs there and I could search files or add marks to the file using vim m and ' or ` (:help marks). Even if a <space>L would be done on these dir, all the subdirectories would be displayed and so the docs would be easily searched since all files in the subdirectories would be in this c:\dirlist_doc file. You may open a new tab with <space>n before to go to a mark and go to marks there. Also if you want to quickly access a previously made bookmarks on a saved directory listing using for example mA (mark with A), you could do <space>n to open a new tab, then to do the 'A or `A to access it. I added <space><tab> which opens the default browsing history file 'dirlist_' in the g:dirListPath. So it would be possible to use always this file to do browsing and to put file marks inside for quick bookmarking.
+"
+"
+" Browsing history tip: You may also use <space>w and save to default file and use \A..\Z to always list directories to same file, and save to same default file, this way you may use also marks with lowercase letters inside this same file, as well as to use the / to find files. This default file could be some sort of browsing history. In this "browsing history file", you may put some links at the top of the file taken from your contextual menu to lauch files to external applications (do gg to go to top of the file where the links would be and ctrl-o 2 times to return to previous location). You may edit this "browsing history" file by selecting and deleting text in it like any text file. If your browsing history file becomes too much big, you may clone it using <space>c and then delete some of its content. 
 
-Licence: This program is free software; you can redistribute it and/or
-  	modify it under the terms of the GNU General Public License.
-  	See http://www.gnu.org/copyleft/gpl.txt
-  	This program is distributed in the hope that it will be
-  	useful, but WITHOUT ANY WARRANTY; without even the implied
-  	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+" Project management tip: Using the same tips previously described, one could have projects directories files example dirlist_myproject and put directories related to a project. The files not needed in a directory could be deleted. If the content of the subdirectories are needed, do a <space>L on the root directory of the project, the dir command will list all the sub directories, then edit the files (lines) in the directories listed. Also as previously explained in the tips above, the links to run/open/edit files related to a project may be pasted at the top of the file from the your contextual menu.
+"
+" "Commands shortcuts" can be used to assosiate words to commands using the dictionary g:cmdDict like so for example:
+" let g:cmdDict = {
+"     \ 'backup' : '!start z:/vifm/runtime/commands/Backup.bat',
+"     \ 'bin' : 'call g:dirTab("c:/cygwin/bin")',
+"     \ 'test' : 'echo "allo"',
+"     \ 'cmdutils' : 'call g:dirTab("z:/apps/portable/cmdutils")',
+"     \ 'commands' : 'call g:dirTab("z:/vifm/runtime/commands")',
+"     \ 'menu' : 'tabe i:/data/Scripts/vim/m',
+"     \ 'notes' : 'call g:dirTab("i:/data/notes")',
+" \}
+" If example the user does <space>; and enters the word "backup" the backup is started. This may be
+" not directly related to directory browsing but I find it useful if one has many directories, he may associate words
+" to these directories for example to do <space>; and write the word "notes" will run the command g:dirTab("i:/data/notes") to list the directory i:/data/notes using this plugin. If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
+" If utl is used the command shortcut dictionnary may be set using a utl link like this for example and subsequent changes to the dictionnary could be reloaded by executing the link:
+" <url:vimscript:let g:cmdDict = { 'backup' : '!start z:/vifm/runtime/commands/Backup.bat', 'bin' : 'call g:dirSplit(\"c:/cygwin/bin\")', 'cmdutils' : 'call g:dirSplit(\"z:/apps/portable/cmdutils\")', 'commands' : 'call g:dirSplit(\"z:/vifm/runtime/commands\")', 'menu' : 'tabe i:/data/Scripts/vim/m', 'notes' : 'call g:dirSplit(\"i:/data/notes\")', 'scripts' : 'call g:dirSplit(\"i:/data/scripts/vim\")', 'shortcuts' : 'call g:dirSplit(\"i:/data/shortcuts\")', 'travail' : 'call g:dirSplit(\"z:/data/travail\")', }>
+"
+" The functions in this plugin may be used in other scripts, plugins or vimrc, especially the g:dirTab, g:dirSplit and other variants, or the g:cPath function. The global variables g:dirSort, g:dirFilter, g:dirTime, g:dirAttributes or g:dirOwner may also be used in scripts. A example of the g:cPath function was given in the overview section above. Another example here is with the use of the utl.vim plugin which I use. The function g:dirSplit is used inside a url to open a directory by clicking the link or doing the command :Utl ol (or the corresponding mapping):
+" <url:vimscript:call g:dirSplit('I:/data/scripts/Vim/')>
+" To see only the .vim files from that directory and sort the directory by date descending do:
+" <url:vimscript:let g:dirFilter = '*.vim' \| let g:dirSort = '/o:g-d' \| call g:dirSplit('I:/data/scripts/Vim/')>
+"
+" Where ever the functions are used, in scripts, vimrc mappings, command line or utl urls, they will behave the same and list the directories or copy the paths or else depending on the functions.
+"
+" Configuration
+" -------------
+" By changing the following variables you can configure the behavior of this
+" plugin. Set the following variables in your .vimrc file using the 'let'
+" command.
+"
+" Default sorting
+" let g:dirSort = '/o:gn'
 
-Version: 3.3
+" Directory attributes
+" let g:dirAttributes = '/a:-h'
 
-Files: plugin/directoryBrowser.vim	
+" Directory time
+" let g:dirTime = '/t:w'
 
-History:
-1.0   2012-08-04
-  	    - First release
-2.0   2012-08-09
-          - Put 36 caracters instead of 39 between beginning of line and filename in cPath
-          - Added \. to \a to \z and \A to \Z
-3.0   2012-08-23
-          - \a to \z list a:\ to z:\ root directories in current buffer (appended)
-          - \A to \Z list a:\ to z:\ root directories in new buffer
-          - -a to -z list a:\ to z:\ root directories in split window
-          - -A to -Z list a:\ to z:\ root directories in vertical split window
-          - =a to =z list a:\ to z:\ root directories in new tab
-          - f/ Change backslash to forwardslash on the current line
-          - f<Bslash> Change forwardslash to backslash on the current line
-          - ff<Bslash> Change backslash to double backslash on the current line
-          - fff<Bslash> Change forwardslash to double backslash on the current line
-          - ffff<Bslash> Change doublebackslash to backslash the current line
-          - <space><f5> copy current file's path+filename relative to current directory with backslash
-          - <space><f6> copy current file's path+filename relative to current directory with forward slash
-          - <space><f7> copy current file's path only (with backslash)
-          - <space><f8> copy current file's path only (with forward slash)
-          - <space><f9> copy current file's filename only (without path)
-          - <space><f10> copy current file's path+filename relative to current directory with the line number (in utl format)
-          - <space>! Layout 1 (2 vertical panes)
-          - <space>@ Layout 2 (2 horizontal panes)
-          - <space># Layout 3 (3 panes: 2 vertical, 1 horizontal)
-          - <space>$ Layout 4 (4 panes)
-          - <space>^ Layout 6 (6 panes)
-          - <space>* Layout 8 (8 panes)
-          - <space>) Layout 10 (10 panes)
-          - <space>- toggle show file owner
-          - <space>0 to change directory attributes
-          - <space>9 to change directory time display and sorting
-          - <space>a interchanged with <space>A
-          - <space>b changed list buffers to open in new tab instead of opening in current tab (not related to directory browsing but useful. Requires utl.vim)
-          - <space>I open file in internet explorer
-          - <space>L to list current directory and its subdirectories recursively
-          - <space>M open a "contextual menu" to run operations on files (requires the utl plugin)
-          - <space>n new file in new tab
-          - <space>N new file in current tab
-          - <space>O open file in notepad
-          - <space>q show available volumes
-          - <space>Q show available volumes with names and details about shares and computers
-          - <space>T open directory in new tab
-          - <space>u open filename in clipboard current tab
-          - <space>U open filename in clipboard in new tab
-          - <space>w to save (append) directory listing to disk (useful for shorcuts)
-          - <space>W to save (overwrite) directory listing to disk
-          - <space>X to show directory and subdirectories structure of current directory using the "tree" command
-          - <space>y list the directory of the path in clipboard (with or without filename) in a new split window
-          - <space>Y list the directory of the path in clipboard (with or without filename) in the current buffer
-          - <space>z open utl link under cursor in a split window (utl plugin required)
-          - <space>Z open utl link under cursor in tab (utl plugin required)
-          - Remove dirOfStr language requirement. Searching for a language specific string was not needed. 
-          - Changes with cursor position and listing position specially using <space>i and <space>m. 
-          - Set g:dir instead of g:dirBuf as defaut when doing \A..\Z (listing drives using capital letters) with is more convenient because this way one my list content of another drive in the same buffer using the \ shortcut key so one may have all his directory browsing inside the same buffer, with is nice if saved to file using <space>w for later viewing and continuation. 
-          - Added <space>F to list the directory of the current file
-          - Changed behavior of <space>i "go to previous dir listing", now it will go to top of current dir then to previous dir if <space>i is typed a second time. 
-          - Modified search string to find current directory (not to conflict with the directory showned by the tree command)
-          - uu, uuu, uuuu, uuuuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
-
-3.1
-          - Don't use version 3.0, use version 3.1 instead.
-          - <space><tab> open default 'browsing history' file called 'dirlist_', useful for fast browsing
- 3.2
-          - Modified the behavior of the <space>C command, in some cases it was not changing to the directory
-3.3
-          - <space>J show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
-          - Removed a tab character that was invisible after the <space>z command
-
-Overview
---------
-This plugin is currently only for Windows but could be easily ported for another OS. Some optional features require cygwin and/or the utl plugin.
-
-The dir plugin allows fast directory browsing inside vim buffers, 
-split windows or tabs. It uses the windows dir command to list
-directories inside buffers and it provides several commands
-to be executed on the listed files or directories including
-dir listing, sorting, filtering, recursive file searching, 
-recursive file greping, file renaming, file deleting,
-file cloning, file executing and file opening/editing in buffer, 
-tab, window and external tools and changing listing options.
-
-The way it works is simple. It insert the output of the windows dir
-command at the end of a buffer and then after the user has moved
-the cursor to one of the lines of this directory listing and
-executes one of the pre-defined (or user defined) command mappings, 
-the path of the directory and the name of the file/directory are 
-copied to some registers and are used to execute the command on the 
-file or directory.
-
-For example if the command mapping \C is executed the directory of
-c:\ is listed at the end of a new split window (every drive may be 
-accessed using \A, \B, \C, ..., \Z or \a..\z to append a listing to current buffer).
-
- Volume in drive C has no label.
- Volume Serial Number is C0B2-2A46
-
- Directory of c:\
-
-2013-05-08  22:01       <DIR>          .vim-fuf-data
-2012-07-10  23:22       <DIR>          clip
-2012-07-23  06:36       <DIR>          cygwin
-2012-07-31  12:29       <DIR>          Documents and Settings
-2012-08-01  04:27       <DIR>          oraclexe
-2012-07-31  12:27       <DIR>          Program Files
-2012-08-02  10:32       <DIR>          repository
-2012-08-02  01:58       <DIR>          temp
-2012-07-08  23:24       <DIR>          test
-2012-08-03  23:31       <DIR>          tmp
-2012-08-02  08:01       <DIR>          WINNT
-2012-08-04  09:11               27ÿ396 _viminfo
-2012-07-07  00:46                  128 test.ctl
-2012-07-07  00:45                   94 test.sql
-2012-07-26  00:05                   74 test.txt
-              10 File(s)         95ÿ932 bytes
-              12 Dir(s)   2ÿ694ÿ692ÿ864 bytes free
-
-If the user moves the cursor on the "Program Files" for example,
-and presses <space>l, the content of the "Program Files"
-directory will be listed in this same buffer after this listing 
-of the c:\ directory. The listing of the "Program Files"
-directory will be positionned correctly at the top of the screen
-so the content of the c:\ will not be seed anymore unless the
-user moves the cursor upwards outside of the current screen. If
-The user presses then <space>h the directory will go one level
-up the directory tree back to the c:\ directory. 
-
-So all the commands are executed on the line where the cursor is 
-positionned to. Many commands are already available to be
-be executed on the directories or files where the cursor is 
-positionned to, and also the users may add some to their
-owned vimrc file like this user defined command for example here
-below which sends the current file where the cursor is positionned 
-to an external tool:
-
-nmap <space>y :call g:cPath() \| silent exe '!start I:\data\AutoHotkey\repository_usb_only\repository.exe "' . @p . @f . '"'<cr>
-
-This mapping is in my vimrc and not in the plugin because it is
-a tool that is used only by myself. Here the g:cPath() function
-will take care to copy the path of the current file to the registers
-@p, which contains the path, and @f which contains the filename, then
-then the external command is executed on this path. So many of the
-commands work this way.
-
-The movements between directories happen quite fast.
-The dir command was used because it performed faster on the test
-computer than the cygwin ls command. So portability was somehow
-sacrificed for performance. But it would be easy to adapt this
-plugin to make it work with the ls command on linux if the
-dir command is not available. 
-
-Note that when the g:dir or its variants g:dir, g:dirTab, g:dirSplit etc
-are executed, the encoding is changed so that the dir command output
-is displayed correctly. The encoding is changed with the following command
-set encoding=cp850 " DOS 850: Western European
-You may change this encoding or remove/comment the command if you 
-don't want your encoding to be changed each time a dir command is issued. 
-
-Usage 
------
-Note that any mappings may be changed. If you don't like the usage of <space> or \ before some commands you may change this easily. <space> may be changed by <tab> for example.
-
-\a to \z      list a:\ to z:\ root directories in current buffer (appended)
-\A to \Z      list a:\ to z:\ root directories in new buffer
--a to -z      list a:\ to z:\ root directories in split window
--A to -Z      list a:\ to z:\ root directories in vertical split window
-=a to =z      list a:\ to z:\ root directories in new tab
-f/            Change backslash to forwardslash on the current line
-f<Bslash>     Change forwardslash to backslash on the current line
-ff<Bslash>    Change backslash to double backslash on the current line
-fff<Bslash>   Change forwardslash to double backslash on the current line
-ffff<Bslash>  Change doublebackslash to backslash the current line
-<space>;      Command shortcuts (Optional. This dictionnary g:cmdDict may be moved to your vimrc and may contain the commands you want. It is used with the g:cmdExe function and the mapping <space>; and it is not absolutly part of this plugin. I put it inside the plugin because it may be a fast way to open directories). If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
-<space>:      Show list of command shortcuts
-<space><esc>  execute command on the vim command line (fast if escape remapped to capslock)
-<space><tab>  open default 'browsing history' file called 'dirlist_', useful for fast browsing
-<space><f3>   search files (including in subdirectories). Cygwin should be installed for this command to work.
-<space><f4>   grep files (including in subdirectories). Cygwin should be installed for this command to work. It will ask for keywords to search and a file filter by which by default is *.
-<space><f5>   copy current file's path+filename relative to current directory with backslash
-<space><f6>   copy current file's path+filename relative to current directory with forward slash
-<space><f7>   copy current file's path only (with backslash)
-<space><f8>   copy current file's path only (with forward slash)
-<space><f9>   copy current file's filename only (without path)
-<space><f10>  copy current file's path+filename relative to current directory with the line number (in utl format)
-<space>!      Layout 1 (2 vertical panes)
-<space>@      Layout 2 (2 horizontal panes)
-<space>#      Layout 3 (3 panes: 2 vertical, 1 horizontal)
-<space>$      Layout 4 (4 panes)
-<space>^      Layout 6 (6 panes)
-<space>*      Layout 8 (8 panes)
-<space>)      Layout 10 (10 panes)
-<space>-      toggle show file owner
-<space>1      sort directory by name ascending
-<space>2      sort directory by name descending
-<space>3      sort directory by type ascending
-<space>4      sort directory by type descending
-<space>5      sort directory by size ascending
-<space>6      sort directory by size descending
-<space>7      sort directory by date ascending
-<space>8      sort directory by date descending
-<space>0      to change directory attributes
-<space>9      to change directory time display and sorting
-<space>.      reload directory (refresh)
-<space>a      write path to open (windows explorer address bar like) (append to current buffer)
-<space>A      write path to open (windows explorer address bar like) (open in new buffer)
-<space>b      list buffers to open in new tab (not related to directory browsing but useful. Requires utl.vim)
-<space>B      list buffers to delete (not related to directory browsing but useful. Requires utl.vim)
-<space>c      duplicate (clone) file
-<space>C      open current directory in command prompt
-<space>d      new directory
-<space>D      delete file or directory
-<space>e      open file in current buffer
-<space>f      Set filter to show only certain files example: *.txt or pic*.jpg
-<space>F      list directory of current file
-<space>g      grep current file (file is opened inside vim and vimgrep is used. No need for cygwin here.)
-<space>h      go up a directory
-<space>i      go to previous dir listing (if many listings were done in the same buffer it allows to go directly back to a previous listing)
-<space>I      open file in internet explorer
-<space>j      preview file (rapidly includes the file into the current buffer. Do <space>k to remove the file and go to next file in the dir listing. Doing successively <space>j and <space>k allows to preview quickly one file after another. If directory listings are saved to disk, they may be quickly opened using this mapping <space>j to list them and browse them.) 
-<space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
-<space>k      used with preview file to remove the preview and go down one line to next file to preview
-<space>l      list directory (go inside a directory)
-<space>L      list directory recursively (go inside subdir)
-<space>m      go to next dir listing (if many listings were done in the same buffer it allows to go directly to the next listing)
-<space>M      open a "contextual menu" to run operations on files. This requires the utl plugin. The contextual menu is a text file containing utl links that are executed using the path in the clipboard register @*. For example here's the content of a contextual menu file, it contains some links to compile csharp code and to edit the menu itself, you may create a menu to your liking. To remove the contextual menu after <space>M is issued, press "u" (undo):
-              MENU
-              <url:vimscript:tabe! I:/data/Scripts/vim/menu.txt>
-              EDIT
-              <url:vimscript:echo     'editpad pro'             | call g:cPathF() | exe '!start Z:\\Apps\\JGSoft\\EditPadPro7\\EditPadPro7.exe ' . @*>
-              <url:vimscript:echo     'excel'                   | call g:cPathF() | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\EXCEL.EXE ' . @*>
-              <url:vimscript:echo     'visual studio'           | call g:cPathF() | exe '!start devenv.exe /edit ' . @*>
-              <url:vimscript:echo     'word'                    | call g:cPathF() | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\WINWORD.EXE ' . @*>
-              <url:vimscript:echo     'wordpad'                 | call g:cPathF() | exe '!start C:\\Program Files\\Windows NT\\Accessoires\\wordpad.exe ' . @*>
-              COMPILE/RUN
-              <url:vimscript:echo     'autohotkey'              | call g:cPathF() | exe '! z:/Apps/Portable/AutoHotkey/AutoHotkey.exe ' . @*>
-              <url:vimscript:echo     'bash script'             | call g:cPathF() | split | enew | exe \"r! c:/cygwin/bin/bash.exe \" . @*>
-              <url:vimscript:echo     'batch files'             | call g:cPathF() | split | enew | exe \"r! \" . @*>
-              <url:vimscript:echo     'cs ms (compile+run)'     | call g:cPathF() | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . @v | r! c:/t.exe>
-              <url:vimscript:echo     'cs ms (compile)'         | call g:cPathF() | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . @v >
-              <url:vimscript:echo     'cs ms (run)'             | split | enew | r! c:/t.exe>
-              <url:vimscript:echo     'cs mono (compile+run)'   | call g:cPathF() | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /out:c:\\t.exe ' . @* | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
-              <url:vimscript:echo     'cs mono (compile)'       | call g:cPathF() | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /out:c:\\t.exe ' . @* >
-              <url:vimscript:echo     'cs mono (run)'           | split | enew | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
-              <url:vimscript:echo     'hta'                     | call g:cPathF() | exe '! mshta.exe ' . @*>
-              <url:vimscript:echo     'html'                    | call g:cPathF() | exe '! ' . @*>
-              <url:vimscript:echo     'html to pdf (+open)'     | call g:cPathF() | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . @* . ' -o t.pdf & t.pdf'>
-              <url:vimscript:echo     'html to pdf'             | call g:cPathF() | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . @* . ' -o t.pdf'>
-              <url:vimscript:echo     'php'                     | call g:cPathF() | split | enew | exe \"r! Z:/Apps/Portable/php/php.exe \" . @*>
-              <url:vimscript:echo     'pl/sql'                  | call g:cPathF() | split | enew | exe \"r! sqlplus.exe -s hr/hr@xe @\" . @*>
-              <url:vimscript:echo     'vbscript'                | call g:cPathF() | split | enew | execute \"r! cscript.exe /nologo \" . @*>
-              Tip: You may copy paste the links from the menu at the top of a file you are editing or even a directory listing, and when you want to run or open the file, you do gg to go to the top of the file and <space>z to execute the link. After it is executed, do ctrl-o 2 times to return to the previous location. You may add "w" to write the file if you are editing a file to save it, and if you are in a directory listing, do <space>p to copy the path of a file and then gg to go to top of the file where the links would be, and do <space>z to open/run the copied file path.
-<space>n      new file in new tab
-<space>N      new file in current tab
-<space>o      open list dir pointed to by a windows .lnk file (dosen't work for all .lnk to directory files, to improve)
-<space>O      open file in notepad
-<space>p      copy file path and name. The path is copied in several formats to different registers. Registers where chosen instead of variables because the path can then be pasted. Often the paths needs to be pasted to files for linking or documentation etc.
-                 1- in @p (directory only) with \
-                 2- in @* (directory and filename) with \ 
-                 3- in @z (directory only) with /
-                 4- in @x (directory and filename) with /
-                 5- in @f (filename only)
-<space>P      show current path
-<space>q      show available volumes
-<space>Q      show available volumes with names, plus, details about shares and computers
-<space>r      run file
-<space>R      rename file or directory
-<space>s      open file in split
-<space>S      list current directory in a split window (no need to have already a directory browser opened)
-<space>t      open file in tab
-<space>T      list current directory in a tab (no need to have already a directory browser opened) 
-<space>u      open filename in clipboard current tab
-<space>U      open filename in clipboard in new tab
-<space>v      open file in vsplit
-<space>V      list current directory in a vsplit window (no need to have already a directory browser opened) 
-<space>w      write append directory listing to disk
-<space>W      write overwrite directory listing to disk
-<space>x      open current directory in windows explorer
-<space>X      Show tree of directory and subdirectories using the tree command
-<space>y      list the directory of the path in clipboard (with or without filename) in a new buffer
-<space>Y      list the directory of the path in clipboard (with or without filename) in the current buffer
-<space>z      open utl link under cursor in a split window (utl plugin required)
-<space>Z      open utl link under cursor in tab (utl plugin required)
-uu, uuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
-
-Bookmarks tip: To make quick bookmarks to files and directories, use vim usual marks with m and ' or ` (:help marks) to points to files and directories in a dir listing since these are buffers and files if written to disk. Use <space>w or <space>W to write a listing to disk. Since the dir listings are files, they can be edited and annoted like any files and one could edit his/her own directory listings to group together in a file related directories. For example I created a file c:\dirlist_doc which contains 2 directories with documentation in pdf etc. When I open this c:/dirlist_doc file, I find all my docs there and I could search files or add marks to the file using vim m and ' or ` (:help marks). Even if a <space>L would be done on these dir, all the subdirectories would be displayed and so the docs would be easily searched since all files in the subdirectories would be in this c:\dirlist_doc file. You may open a new tab with <space>n before to go to a mark and go to marks there. Also if you want to quickly access a previously made bookmarks on a saved directory listing using for example mA (mark with A), you could do <space>n to open a new tab, then to do the 'A or `A to access it. I added <space><tab> which opens the default browsing history file 'dirlist_' in the g:dirListPath. So it would be possible to use always this file to do browsing and to put file marks inside for quick bookmarking.
-
-
-Browsing history tip: You may also use <space>w and save to default file and use \A..\Z to always list directories to same file, and save to same default file, this way you may use also marks with lowercase letters inside this same file, as well as to use the / to find files. This default file could be some sort of browsing history. In this "browsing history file", you may put some links at the top of the file taken from your contextual menu to lauch files to external applications (do gg to go to top of the file where the links would be and ctrl-o 2 times to return to previous location). You may edit this "browsing history" file by selecting and deleting text in it like any text file. If your browsing history file becomes too much big, you may clone it using <space>c and then delete some of its content. 
-
-Project management tip: Using the same tips previously described, one could have projects directories files example dirlist_myproject and put directories related to a project. The files not needed in a directory could be deleted. If the content of the subdirectories are needed, do a <space>L on the root directory of the project, the dir command will list all the sub directories, then edit the files (lines) in the directories listed. Also as previously explained in the tips above, the links to run/open/edit files related to a project may be pasted at the top of the file from the your contextual menu.
-
-"Commands shortcuts" can be used to assosiate words to commands using the dictionary g:cmdDict like so for example:
-let g:cmdDict = {
-    \ 'backup' : '!start z:/vifm/runtime/commands/Backup.bat',
-    \ 'bin' : 'call g:dirTab("c:/cygwin/bin")',
-    \ 'test' : 'echo "allo"',
-    \ 'cmdutils' : 'call g:dirTab("z:/apps/portable/cmdutils")',
-    \ 'commands' : 'call g:dirTab("z:/vifm/runtime/commands")',
-    \ 'menu' : 'tabe i:/data/Scripts/vim/m',
-    \ 'notes' : 'call g:dirTab("i:/data/notes")',
-\}
-If example the user does <space>; and enters the word "backup" the backup is started. This may be
-not directly related to directory browsing but I find it useful if one has many directories, he may associate words
-to these directories for example to do <space>; and write the word "notes" will run the command g:dirTab("i:/data/notes") to list the directory i:/data/notes using this plugin. If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
-If utl is used the command shortcut dictionnary may be set using a utl link like this for example and subsequent changes to the dictionnary could be reloaded by executing the link:
-<url:vimscript:let g:cmdDict = { 'backup' : '!start z:/vifm/runtime/commands/Backup.bat', 'bin' : 'call g:dirSplit(\"c:/cygwin/bin\")', 'cmdutils' : 'call g:dirSplit(\"z:/apps/portable/cmdutils\")', 'commands' : 'call g:dirSplit(\"z:/vifm/runtime/commands\")', 'menu' : 'tabe i:/data/Scripts/vim/m', 'notes' : 'call g:dirSplit(\"i:/data/notes\")', 'scripts' : 'call g:dirSplit(\"i:/data/scripts/vim\")', 'shortcuts' : 'call g:dirSplit(\"i:/data/shortcuts\")', 'travail' : 'call g:dirSplit(\"z:/data/travail\")', }>
-
-The functions in this plugin may be used in other scripts, plugins or vimrc, especially the g:dirTab, g:dirSplit and other variants, or the g:cPath function. The global variables g:dirSort, g:dirFilter, g:dirTime, g:dirAttributes or g:dirOwner may also be used in scripts. A example of the g:cPath function was given in the overview section above. Another example here is with the use of the utl.vim plugin which I use. The function g:dirSplit is used inside a url to open a directory by clicking the link or doing the command :Utl ol (or the corresponding mapping):
-<url:vimscript:call g:dirSplit('I:/data/scripts/Vim/')>
-To see only the .vim files from that directory and sort the directory by date descending do:
-<url:vimscript:let g:dirFilter = '*.vim' \| let g:dirSort = '/o:g-d' \| call g:dirSplit('I:/data/scripts/Vim/')>
-
-Where ever the functions are used, in scripts, vimrc mappings, command line or utl urls, they will behave the same and list the directories or copy the paths or else depending on the functions.
-
-Configuration
--------------
-By changing the following variables you can configure the behavior of this
-plugin. Set the following variables in your .vimrc file using the 'let'
-command.
-
-Default sorting
-let g:dirSort = '/o:gn'
-
-Directory attributes
-let g:dirAttributes = '/a:-h'
-
-Directory time
-let g:dirTime = '/t:w'
-
-Default filter (all files)
-let dirFilter = '*.*'
-
-Examples
---------
-
-- If you write this on the command line it will list the "program files" directory in a new tab
-:call g:dirTab("c:/program files")
-
-- If you write this on the command line it will list the "program files" directory in a horizontal split window
-:call g:dirSplit("c:/program files")
-
-- If you write this on the command line it will list the "program files" directory in a vertical split window
-:call g:dirVSplit("c:/program files")
-
-- If you write this on the command line it will list the "program files" directory in a new buffer in the same tab
-:call g:dirBuf("c:/program files")
-
-- If you write this on the command line it will list the "program files" directory as appended text at the end of the current buffer
-:call g:dir("c:/program files")
-
-- All these commands may be used with mappings like for example:
-nmap -s :call g:dirSplit("c:/program files")
-Then press - and then s to execute the command.
-
-- Do \C to list the c:\ directory in a new buffer, or \D to list the d:\ etc. All alphabet letters are "pre-mapped" this way. You may change them to capital letters if they conflict with your current mappings.
-
-- Do \c to list the c:\ directory in the current buffer (appended), or \d to list the d:\ etc.
-
-- Do <space>a (or <space>A) write a path like c:/temp (or c:\temp). This mappings makes it possible to type in paths.
-
-- Do <space>f and write *.txt to see only the *.txt files and do again <space>f and write *.* to see all files.
-
-- Do <space>7 to sort by date
-
-- Do <space><esc> to issue a command (so vim maybe used instead of a dos command prompt window)
-
-- You may use the predifined layouts <space>!, <space>@, etc (see above) to view multiple directories in the same window. You may do your own layouts too using the same commands (10 windows is the maximum predefined, but you may add more if you have a large screen). I suggest that you map the :tabclose command to close the tab where there are layouts because the close buffer or close window command would then have to be repeated as many time as there are panes.
-
-Todo:
-- detect OS version (2000/xp/7) because in win2000 and 7 for example, the number of caracters before the filename in the dir listing is not the same, it is 39 in win2000 and 36 in windows 7, so add a condition there to select the number of caracters accordingly.
-- Maybe not have always paths copied to clipboard...use variables and copy to clipboard when needed only
-- Maybe to make is work with the ls command under linux.
-- peut-etre ajouter un hash table qui contiendrait des mots-cles/Paths et qui permettrait par exemple d'ecrire cmdutils et ca changerait vers le path z:\apps\portables\cmdutils
-- peut-etre permettre d'entrer une partie seulement des commands dans le dictionnaire et que ca va trouver la commande quand meme
-- In another version of the plugin, do <space>m to mark the current file with an * (in copyfile add also the copy of the line number in the register @n), and in the function that will mark a file, will with the line number add the * and all the commands line delete, clone etc will be inside new functions. And when a mark * is done on a file with <space>m the file path will be added to an list (array) and all these commands (delete, run, clone, etc) will be executed in a loop on all the files in the list (array)
-- ajouter copie d'un fichier: cPath et apres dans le rep dest mettre @f et @p dans variables temp f et p et faire un autre copy path et ensuite faire la commande de copie. Pour un move faire meme chose mais faire un delete des fichier source (variable p et f) apres.
-- conserver les repertoires recemment browser dans un tableau
-- put the encoding as a global variable
-- maybe have a layout function which takes the number of rows and columns in parameters and split accordingly and maybe this function global so it may be called from utl links to have predefined layouts. Also have a global array that would contain the default paths for each of the directory listed in these windows.
-
+" Default filter (all files)
+" let dirFilter = '*.*'
+" 
+" Examples
+" --------
+"
+" - If you write this on the command line it will list the "program files" directory in a new tab
+" :call g:dirTab("c:/program files")
+"
+" - If you write this on the command line it will list the "program files" directory in a horizontal split window
+" :call g:dirSplit("c:/program files")
+"
+" - If you write this on the command line it will list the "program files" directory in a vertical split window
+" :call g:dirVSplit("c:/program files")
+"
+" - If you write this on the command line it will list the "program files" directory in a new buffer in the same tab
+" :call g:dirBuf("c:/program files")
+"
+" - If you write this on the command line it will list the "program files" directory as appended text at the end of the current buffer
+" :call g:dir("c:/program files")
+"
+" - All these commands may be used with mappings like for example:
+" nmap -s :call g:dirSplit("c:/program files")
+" Then press - and then s to execute the command.
+"
+" - Do \C to list the c:\ directory in a new buffer, or \D to list the d:\ etc. All alphabet letters are "pre-mapped" this way. You may change them to capital letters if they conflict with your current mappings.
+"
+" - Do \c to list the c:\ directory in the current buffer (appended), or \d to list the d:\ etc.
+"
+" - Do <space>a (or <space>A) write a path like c:/temp (or c:\temp). This mappings makes it possible to type in paths.
+"
+" - Do <space>f and write *.txt to see only the *.txt files and do again <space>f and write *.* to see all files.
+"
+" - Do <space>7 to sort by date
+"
+" - Do <space><esc> to issue a command (so vim maybe used instead of a dos command prompt window)
+"
+" - You may use the predifined layouts <space>!, <space>@, etc (see above) to view multiple directories in the same window. You may do your own layouts too using the same commands (10 windows is the maximum predefined, but you may add more if you have a large screen). I suggest that you map the :tabclose command to close the tab where there are layouts because the close buffer or close window command would then have to be repeated as many time as there are panes.
+"
+" Todo:
+" - do 2 separate commands to delete directory and delete file
+" - maybe put the browsing history @H in a file instead of a registry
+" - detect OS version (2000/xp/7) because in win2000 and 7 for example, the number of caracters before the filename in the dir listing is not the same, it is 39 in win2000 and 36 in windows 7, so add a condition there to select the number of caracters accordingly.
+" - Maybe to make is work with the ls command under linux.
+" - peut-etre ajouter un hash table qui contiendrait des mots-cles/Paths et qui permettrait par exemple d'ecrire cmdutils et ca changerait vers le path z:\apps\portables\cmdutils
+" - peut-etre permettre d'entrer une partie seulement des commands dans le dictionnaire et que ca va trouver la commande quand meme
+" - In another version of the plugin, do <space>m to mark the current file with an * (in copyfile add also the copy of the line number in the register @n), and in the function that will mark a file, will with the line number add the * and all the commands line delete, clone etc will be inside new functions. And when a mark * is done on a file with <space>m the file path will be added to an list (array) and all these commands (delete, run, clone, etc) will be executed in a loop on all the files in the list (array)
+" - ajouter copie d'un fichier: cPath et apres dans le rep dest mettre @f et @p dans variables temp f et p et faire un autre copy path et ensuite faire la commande de copie. Pour un move faire meme chose mais faire un delete des fichier source (variable p et f) apres.
+" - conserver les repertoires recemment browser dans un tableau
+" - put the encoding as a global variable
+" - maybe have a layout function which takes the number of rows and columns in parameters and split accordingly and maybe this function global so it may be called from utl links to have predefined layouts. Also have a global array that would contain the default paths for each of the directory listed in these windows.
+"
+" ------------------------------------------------------------------------------

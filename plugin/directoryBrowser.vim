@@ -11,7 +11,7 @@
 "		useful, but WITHOUT ANY WARRANTY; without even the implied
 "		warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 "
-" Version: 3.3
+" Version: 4.0
 "
 " Files: plugin/directoryBrowser.vim
 "
@@ -75,16 +75,22 @@
 "           - Changed behavior of <space>i "go to previous dir listing", now it will go to top of current dir then to previous dir if <space>i is typed a second time. 
 "           - Modified search string to find current directory (not to conflict with the directory showned by the tree command)
 "           - uu, uuu, uuuu, uuuuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
-" 
 " 3.1
 "           - Don't use version 3.0, use version 3.1 instead.
 "           - <space><tab> open default 'browsing history' file called 'dirlist_', useful for fast browsing
-"
 " 3.2
 "           - Modified the behavior of the <space>C command, in some cases it was not changing to the directory
 " 3.3
 "           - <space>J show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
 "           - Removed a tab character that was invisible after the <space>z command
+"
+" 4.0       - 2012-09-04 11:43:43 (mar.) Changes to many code not to use registers to keep paths info, but global variables instead. These global variables may be used anywhere in vim, and if the registers are needed to paste path information, do <space>p to copy the path info from the variables to the registers. Now registers will not be overwritten by the plugin except for the @H register which contains the browsing history.
+"           - 2012-09-04 11:45:27 (mar.) There are new global variables similar to the variable to keep path info, but they keep the previous file path info. This is used to execute actions from one window or tab to another, one example is the contextual menu, other example may be project files with link to compile, run etc.
+"           - 2012-09-03 11:05:17 (lun.) Modified <space>M now the contextual menu is very useful as it opens in a split window and may execute actions on the file where the cursor was before switching to the menu window. That file may be a file in edition or a directory listing. So instead of copying links at the top of the file like in previous versions of the plugin, now the menu is opened in a split window (or a tab). It is still possible to put links at the top of files if the links are specific to the file, but it is more convenient to have it in a split window. Autocommands onEnter and onLeave window/tab where added to make this possible, these autocommands copy the paths when entering or leaving a window/tab and keep the previous path in registers and if the file moved to is the menu file, the current file path registers do not contain the path of the menu file like other files but they contain the path of the previous file, so that it may be used for lauching actions on the previous file be it a file in edition or a file in a directory listing.
+"           - 2012-09-03 23:25:23 (lun.) I included a big part of my own to-date contextual menu as an example in this plugin usage section. This one works with the new modifications concerning the menu file displayed in a window/tab.
+"           - 2012-09-04 00:18:07 (mar.) The paths are not copied anymore to the registers at each operations, only when the user presses <space>p the paths are copied to register for pasting. 
+"           - 2012-08-31 05:36:44 (ven.) Modified <space><esc> to execute the command in the current path of the current directory listing if no path specified.
+"           - 2012-08-31 05:41:22 (ven.) Modified <space>i and <space>m to changed copy the path at the same time the listing is changed and to change vim's directory to the copied directory.
 "
 " Overview
 " --------
@@ -152,12 +158,12 @@
 " below which sends the current file where the cursor is positionned 
 " to an external tool:
 "
-" nmap <space>y :call g:cPath() \| silent exe '!start I:\data\AutoHotkey\repository_usb_only\repository.exe "' . @p . @f . '"'<cr>
+" nmap <space>y :call g:cPath() \| silent exe '!start I:\data\AutoHotkey\repository_usb_only\repository.exe "' . g:dirCs . '"'<cr>
 "
 " This mapping is in my vimrc and not in the plugin because it is
 " a tool that is used only by myself. Here the g:cPath() function
-" will take care to copy the path of the current file to the registers
-" @p, which contains the path, and @f which contains the filename, then
+" will take care to copy the path of the current file to the variable
+" g:dirCs, which contains the full path, then
 " then the external command is executed on this path. So many of the
 " commands work this way.
 "
@@ -201,7 +207,7 @@
 " ffff<Bslash>  Change doublebackslash to backslash the current line
 " <space>;      Command shortcuts (Optional. This dictionnary g:cmdDict may be moved to your vimrc and may contain the commands you want. It is used with the g:cmdExe function and the mapping <space>; and it is not absolutly part of this plugin. I put it inside the plugin because it may be a fast way to open directories). If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
 " <space>:      Show list of command shortcuts
-" <space><esc>  execute command on the vim command line (fast if escape remapped to capslock)
+" <space><esc>  execute command on the vim command line (fast if escape remapped to capslock). If no path specified, executes in the current path of current directory listing.
 " <space><tab>  open default 'browsing history' file called 'dirlist_', useful for fast browsing
 " <space><f3>   search files (including in subdirectories). Cygwin should be installed for this command to work.
 " <space><f4>   grep files (including in subdirectories). Cygwin should be installed for this command to work. It will ask for keywords to search and a file filter by which by default is *.
@@ -246,48 +252,110 @@
 " <space>i      go to previous dir listing (if many listings were done in the same buffer it allows to go directly back to a previous listing)
 " <space>I      open file in internet explorer
 " <space>j      preview file (rapidly includes the file into the current buffer. Do <space>k to remove the file and go to next file in the dir listing. Doing successively <space>j and <space>k allows to preview quickly one file after another. If directory listings are saved to disk, they may be quickly opened using this mapping <space>j to list them and browse them.) 
-" <space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
+" <space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
 " <space>k      used with preview file to remove the preview and go down one line to next file to preview
 " <space>l      list directory (go inside a directory)
 " <space>L      list directory recursively (go inside subdir)
 " <space>m      go to next dir listing (if many listings were done in the same buffer it allows to go directly to the next listing)
-" <space>M      open a "contextual menu" to run operations on files. This requires the utl plugin. The contextual menu is a text file containing utl links that are executed using the path in the clipboard register @*. For example here's the content of a contextual menu file, it contains some links to compile csharp code and to edit the menu itself, you may create a menu to your liking. To remove the contextual menu after <space>M is issued, press "u" (undo):
-"               MENU
-"               <url:vimscript:tabe! I:/data/Scripts/vim/menu.txt>
-"               EDIT
-"               <url:vimscript:echo     'editpad pro'             | call g:cPathF() | exe '!start Z:\\Apps\\JGSoft\\EditPadPro7\\EditPadPro7.exe ' . @*>
-"               <url:vimscript:echo     'excel'                   | call g:cPathF() | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\EXCEL.EXE ' . @*>
-"               <url:vimscript:echo     'visual studio'           | call g:cPathF() | exe '!start devenv.exe /edit ' . @*>
-"               <url:vimscript:echo     'word'                    | call g:cPathF() | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\WINWORD.EXE ' . @*>
-"               <url:vimscript:echo     'wordpad'                 | call g:cPathF() | exe '!start C:\\Program Files\\Windows NT\\Accessoires\\wordpad.exe ' . @*>
-"               COMPILE/RUN
-"               <url:vimscript:echo     'autohotkey'              | call g:cPathF() | exe '! z:/Apps/Portable/AutoHotkey/AutoHotkey.exe ' . @*>
-"               <url:vimscript:echo     'bash script'             | call g:cPathF() | split | enew | exe \"r! c:/cygwin/bin/bash.exe \" . @*>
-"               <url:vimscript:echo     'batch files'             | call g:cPathF() | split | enew | exe \"r! \" . @*>
-"               <url:vimscript:echo     'cs ms (compile+run)'     | call g:cPathF() | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . @v | r! c:/t.exe>
-"               <url:vimscript:echo     'cs ms (compile)'         | call g:cPathF() | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . @v >
-"               <url:vimscript:echo     'cs ms (run)'             | split | enew | r! c:/t.exe>
-"               <url:vimscript:echo     'cs mono (compile+run)'   | call g:cPathF() | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /out:c:\\t.exe ' . @* | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
-"               <url:vimscript:echo     'cs mono (compile)'       | call g:cPathF() | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /out:c:\\t.exe ' . @* >
-"               <url:vimscript:echo     'cs mono (run)'           | split | enew | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
-"               <url:vimscript:echo     'hta'                     | call g:cPathF() | exe '! mshta.exe ' . @*>
-"               <url:vimscript:echo     'html'                    | call g:cPathF() | exe '! ' . @*>
-"               <url:vimscript:echo     'html to pdf (+open)'     | call g:cPathF() | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . @* . ' -o t.pdf & t.pdf'>
-"               <url:vimscript:echo     'html to pdf'             | call g:cPathF() | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . @* . ' -o t.pdf'>
-"               <url:vimscript:echo     'php'                     | call g:cPathF() | split | enew | exe \"r! Z:/Apps/Portable/php/php.exe \" . @*>
-"               <url:vimscript:echo     'pl/sql'                  | call g:cPathF() | split | enew | exe \"r! sqlplus.exe -s hr/hr@xe @\" . @*>
-"               <url:vimscript:echo     'vbscript'                | call g:cPathF() | split | enew | execute \"r! cscript.exe /nologo \" . @*>
-"               Tip: You may copy paste the links from the menu at the top of a file you are editing or even a directory listing, and when you want to run or open the file, you do gg to go to the top of the file and <space>z to execute the link. After it is executed, do ctrl-o 2 times to return to the previous location. You may add "w" to write the file if you are editing a file to save it, and if you are in a directory listing, do <space>p to copy the path of a file and then gg to go to top of the file where the links would be, and do <space>z to open/run the copied file path.
+" <space>M      open a "contextual menu" in a split window to run operations on files. This requires the utl plugin. The contextual menu is a text file containing utl links that are executed using paths saved to registers. For example here's the content of a contextual menu file, it contains some links to compile csharp code and to edit the menu itself, you may create a menu to your liking.
+"- Edit
+"<url:vimscript:echo      'editpad pro'             | exe '!start Z:\\Apps\\JGSoft\\EditPadPro7\\EditPadPro7.exe ' . g:dirPs>
+"<url:vimscript:echo      'excel'                   | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\EXCEL.EXE ' . g:dirPs>
+"<url:vimscript:echo      'gnumeric'                | exe '!start "Z:/Apps/Portable/GnumericPortable/GnumericPortable.exe" ' . g:dirPs>
+"<url:vimscript:echo      'visual studio'           | exe '!start devenv.exe /edit ' . g:dirPs>
+"<url:vimscript:echo      'word'                    | exe '!start c:\\Program Files\\Microsoft Office\\Office12\\WINWORD.EXE ' . g:dirPs>
+"<url:vimscript:echo      'wordpad'                 | exe '!start C:\\Program Files\\Windows NT\\Accessoires\\wordpad.exe ' . g:dirPs>
+"- Open
+"<url:vimscript:echo      '7zip'                    | exe '!start z:\\Apps\\Portable\\LiberKey\\Apps\\7Zip\\App\\7-Zip\\7zFM.exe ' . g:dirPs>
+"<url:vimscript:echo      'dotpeek'                 | exe '!start z:\\Apps\\Portable\\dotPeek\\dotPeek.exe ' . g:dirPs>
+"<url:vimscript:echo      'firefox'                 | exe '!start \"C:\\Program Files\\Mozilla Firefox\\firefox.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'flv player'              | exe '!start \"Z:\\Apps\\Portable\\FLV Player\\FLVPlayer.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'foxit reader'            | exe '!start \"Z:\\Apps\\Portable\\FoxitReader\\Foxit Reader.exe\" ' . g:dirPs>
+"<url:vimscript:echo      'gvim'                    | exe '!start I:\\apps\\Batch\\GVim.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro'              | exe '!start I:\\apps\\Batch\\GVimMacro.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source'             | exe '!start I:\\apps\\Batch\\GVimSource.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim1'                   | exe '!start I:\\apps\\Batch\\GVim1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro1'             | exe '!start I:\\apps\\Batch\\GVimMacro1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source1'            | exe '!start I:\\apps\\Batch\\GVimSource1.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim2'                   | exe '!start I:\\apps\\Batch\\GVim2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro2'             | exe '!start I:\\apps\\Batch\\GVimMacro2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source2'            | exe '!start I:\\apps\\Batch\\GVimSource2.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim3'                   | exe '!start I:\\apps\\Batch\\GVim3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro3'             | exe '!start I:\\apps\\Batch\\GVimMacro3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source3'            | exe '!start I:\\apps\\Batch\\GVimSource3.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim4'                   | exe '!start I:\\apps\\Batch\\GVim4.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim macro4'             | exe '!start I:\\apps\\Batch\\GVimMacro4.bat ' . g:dirPs>
+"<url:vimscript:echo      'gvim source4'            | exe '!start I:\\apps\\Batch\\GVimSource4.bat ' . g:dirPs>
+"<url:vimscript:echo      'ildasm'                  | exe '!start C:\\Program Files\\Microsoft Visual Studio 8\\SDK\\v2.0\\Bin\\ildasm.exe ' . g:dirPs>
+"<url:vimscript:echo      'ilspy'                   | exe '!start Z:\\Apps\\Portable\\ILSpy\\ILSpy.exe ' . g:dirPs>
+"<url:vimscript:echo      'mspaint'                 | exe '!start C:\\windows\\system32\\mspaint.exe ' . g:dirPs>
+"<url:vimscript:echo      'picpick'                 | exe '!start I:\\apps\\PicPick\\picpick.exe ' . g:dirPs>
+"<url:vimscript:echo      'picpick win2k'           | exe '!start I:\\apps\\PicPick\\picpickWin2k.exe ' . g:dirPs>
+"<url:vimscript:echo      'powergrep file'          | exe '!start I:\\apps\\Batch\\PowerGrepFile.bat ' . g:dirPs>
+"<url:vimscript:echo      'powergrep folder'        | exe '!start I:\\apps\\Batch\\PowerGrepFolder.bat ' . g:dirPs>
+"<url:vimscript:echo      'wink'                    | exe '!start Z:\\Apps\\Portable\\Wink\\Wink.exe ' . g:dirPs>
+"- Copy to
+"<url:vimscript:echo      'file to repository'      | exe '! I:/data/AutoHotkey/repository.exe ' . g:dirPs>
+"<url:vimscript:echo      'file to repository (usb)'| exe '! I:/data/AutoHotkey/repository_usb_only/repository.exe ' . g:dirPs>
+"<url:vimscript:echo      'dir to repository'       | exe '! del ' . g:dirPv . '.7z & z:\\vifm\\runtime\\commands\\7z a ' . g:dirPv . '.7z ' . g:dirPv . '\\* & i:\\data\\autohotkey\\repository.exe ' . g:dirPv . '.7z /c & del ' . g:dirPv . '.7z'>
+"<url:vimscript:echo      'dir to repository (usb)' | exe '! del ' . g:dirPv . '.7z & z:\\vifm\\runtime\\commands\\7z a ' . g:dirPv . '.7z ' . g:dirPv . '\\* & i:\\data\\autohotkey\\repository_usb_only\\repository.exe ' . g:dirPv . '.7z /c & del ' . g:dirPv . '.7z'>
+"<url:vimscript:echo      'sendto'                  | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\\' . $username . '\\SendTo\"'>
+"<url:vimscript:echo      'app_data_temp'           | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\\' . $username . '\\Local Settings\\Application Data\\Temp\"'>
+"<url:vimscript:echo      'c_temp'                  | exe '! copy \"' . g:dirPs . '\" c:\\temp'>
+"<url:vimscript:echo      'c_tmp'                   | exe '! copy \"' . g:dirPs . '\" c:\\tmp'>
+"<url:vimscript:echo      'internet'                | exe '! copy \"' . g:dirPs . '\" I:\\data\\Shortcuts\\Internet'>
+"<url:vimscript:echo      'local_set_temp'          | exe '! copy \"' . g:dirPs . '\" \"C:\\Documents and Settings\\' . $username . '\\Local Settings\\Temp\"'>
+"<url:vimscript:echo      'z_data_temp'             | exe '! copy \"' . g:dirPs . '\" z:\\data\\temp'>
+"<url:vimscript:echo      'z_temp'                  | exe '! copy \"' . g:dirPs . '\" z:\\temp'>
+"<url:vimscript:echo      'types'                   | setqflist([]) | exe 'vimgrepadd /\\(\^\\s*\\|static.*\\s\\|public.*\\s\\|private.*\\s\\|internal.*\\s\\|protected.*\\s\\|sealed.*\\s\\)\\(class\\|struct\\|enum\\|delegate\\|event\\|delegates\\)/gj' . g:dirPv | copen>
+"- Compile/run
+"<url:vimscript:echo      'autohotkey'              | let t = g:dirPs | exe '! z:/Apps/Portable/AutoHotkey/AutoHotkey.exe ' . t>
+"<url:vimscript:echo      'bash script'             | let t = g:dirPs | split | enew | exe \"r! c:/cygwin/bin/bash.exe \" . t>
+"rem <url:vimscript:echo  'batch files'             | let t = g:dirPs | split | enew | exe \"r! \" . t>
+"<!-- <url:vimscript:echo 'cs (copy app.config)'    | exe '!copy ' . g:dirPv . ' c:\\t.exe.config'> -->
+"' <url:vimscript:echo    'hta'                     | exe '! mshta.exe ' . g:dirPs>
+"<!-- <url:vimscript:echo 'html to pdf (+open)'     | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . g:dirPs . ' -o t.pdf & t.pdf'>
+"<url:vimscript:echo      'html to pdf'             | exe '! Z:/Apps/Portable/CmdUtils/Prince/Engine/bin/prince.exe ' . g:dirPs . ' -o t.pdf'>
+"// <url:vimscript:echo   'php'                     | let t = g:dirPs | split | enew | exe \"r! Z:/Apps/Portable/php/php.exe \" . t>
+"-- <url:vimscript:echo   'pl/sql'                  | let t = g:dirPs | split | enew | exe \"r! sqlplus.exe -s hr/hr @\" . t>
+"' <url:vimscript:echo    'vbscript'                | let t = g:dirPs | split | enew | execute \"r! cscript.exe /nologo \" . t>
+"- C# code
+"// <url:vimscript:echo   'snippet (load)'          | source i:/data/scripts/vim/cs_snip.vim>
+"// <url:vimscript:echo   'snippet (edit)'          | split | e! i:/data/scripts/vim/cs_snip.vim>
+"// <url:vimscript:echo   'cs ms (help)'            | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /?' | normal ggdd>
+"// <url:vimscript:echo   'cs ms (compile+run)'     | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . v | r! c:/t.exe>
+"// <url:vimscript:echo   'cs ms (compile)'         | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /out:c:\\t.exe ' . v >
+"// <url:vimscript:echo   'cs ms (compile_dll)'     | let v = g:dirPv | split | enew | exe 'r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe /target:library /out:c:\\t.dll /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll ' . v>
+"// <url:vimscript:echo   'cs ms (run)'             | split | enew | r! c:\\WINDOWS\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe>
+"// <url:vimscript:echo   'cs mono (help)'          | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /?' | normal ggdd>
+"// <url:vimscript:echo   'cs mono (compile+run)'   | let t = g:dirPs | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll /out:c:\\t.exe ' . t | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
+"// <url:vimscript:echo   'cs mono (compile)'       | let t = g:dirPs | split | enew | exe 'r! c:\\Progra~1\\Mono-2.10.8\\bin\\mcs /reference:System.Data.dll,System.Configuration.dll,System.Data.SQLite.dll /out:c:\\t.exe ' . t >
+"// <url:vimscript:echo   'cs mono (run)'           | split | enew | r! c:\\Progra~1\\Mono-2.10.8\\bin\\mono.exe c:/t.exe>
+"<!-- <url:vimscript:echo 'cs (copy app.config)'    | exe '!copy ' . g:dirPv . ' c:\\t.exe.config'> -->
+"// <url:vimscript:echo   'types'                   | exe 'vimgrepadd /\\(\^\\s*\\|static.*\\s\\|public.*\\s\\|private.*\\s\\|internal.*\\s\\|protected.*\\s\\|sealed.*\\s\\)\\(class\\|struct\\|enum\\|delegate\\|event\\|delegates\\)/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'properties'              | exe 'vimgrepadd /\\s\\(get\\|set\\)\\(\\s\\|;\\)/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'methods'                 | exe 'vimgrepadd /\\(static\\|public\\|private\\|internal\\|protected\\).*(\\(\\a\\|)\\)\\(;\\)\\@!/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'exceptions'              | exe 'vimgrepadd /\\scatch\\s/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   'instanciations (new)'    | exe 'vimgrepadd / new .*;/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   '[MET] Console.Write'     | exe 'vimgrepadd /Console.Write/gj ' . g:dirPx | copen>
+"// <url:vimscript:echo   '[MET] Format'            | exe 'vimgrepadd /Format(/gj ' . g:dirPx | copen>
+"- Vimscript code
+" <url:vimscript:echo   'functions'                | exe 'vimgrepadd /^\\(fu\\|fun\\|function\\)\\(!\\|\\s\\).*/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'variables'                | exe 'vimgrepadd /^let.*/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'mappings'                 | exe 'vimgrepadd /^\\(map\\|nmap\\|imap\\|abb\\)/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'autocommands'             | exe 'vimgrepadd /\\(au\\|autocommand\\)\\(!\\|\\s\\)/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'comments'                 | exe 'vimgrepadd /^\"/gj ' . g:dirPx | copen>
+" <url:vimscript:echo   'echo'                     | exe 'vimgrepadd /echo/gj ' . g:dirPx | copen>
 " <space>n      new file in new tab
 " <space>N      new file in current tab
 " <space>o      open list dir pointed to by a windows .lnk file (dosen't work for all .lnk to directory files, to improve)
 " <space>O      open file in notepad
-" <space>p      copy file path and name. The path is copied in several formats to different registers. Registers where chosen instead of variables because the path can then be pasted. Often the paths needs to be pasted to files for linking or documentation etc.
-"                  1- in @p (directory only) with \
-"                  2- in @* (directory and filename) with \ 
-"                  3- in @z (directory only) with /
-"                  4- in @x (directory and filename) with /
-"                  5- in @f (filename only)
+" <space>p      copy file path and name. The path is copied in several formats to different variables. <space>p will refresh these variables with current path and copy those to corresponding registers ex: g:dirPz to register @z, g:dirPf to register @f (the exception is g:dirPs to register @*). Often the paths needs to be pasted to files for linking or documentation etc. See function s:divPath()
+"                  1- in g:dirCp (directory only) with \
+"                  2- in g:dirC* (directory and filename) with \ 
+"                  3- in g:dirCz (directory only) with /
+"                  4- in g:dirCx (directory and filename) with /
+"                  5- in g:dirCf (filename only)
 " <space>P      show current path
 " <space>q      show available volumes
 " <space>Q      show available volumes with names, plus, details about shares and computers
@@ -396,8 +464,8 @@
 " - You may use the predifined layouts <space>!, <space>@, etc (see above) to view multiple directories in the same window. You may do your own layouts too using the same commands (10 windows is the maximum predefined, but you may add more if you have a large screen). I suggest that you map the :tabclose command to close the tab where there are layouts because the close buffer or close window command would then have to be repeated as many time as there are panes.
 "
 " Todo:
+" - maybe put the browsing history @H in a file instead of a registry
 " - detect OS version (2000/xp/7) because in win2000 and 7 for example, the number of caracters before the filename in the dir listing is not the same, it is 39 in win2000 and 36 in windows 7, so add a condition there to select the number of caracters accordingly.
-" - Maybe not have always paths copied to clipboard...use variables and copy to clipboard when needed only
 " - Maybe to make is work with the ls command under linux.
 " - peut-etre ajouter un hash table qui contiendrait des mots-cles/Paths et qui permettrait par exemple d'ecrire cmdutils et ca changerait vers le path z:\apps\portables\cmdutils
 " - peut-etre permettre d'entrer une partie seulement des commands dans le dictionnaire et que ca va trouver la commande quand meme
@@ -433,7 +501,27 @@ let g:dirOwner = ''
 let g:dirListPath = 'c:/'
 
 " Contextual menu path
-let g:dirMenuPath = 'I:/data/Scripts/vim/menu.txt'
+let g:dirMenuPath = 'I:\data\Scripts\vim\menu.txt'
+
+" Variable to contains the current paths variations (see s:DivPath() function)
+let g:dirCc = ''
+let g:dirCd = ''
+let g:dirCf = ''
+let g:dirCp = ''
+let g:dirCs = ''
+let g:dirCv = ''
+let g:dirCx = ''
+let g:dirCz = ''
+
+" Variable to contains the previous paths variations (see s:DivPath() function)
+let g:dirPc = ''
+let g:dirPd = ''
+let g:dirPf = ''
+let g:dirPp = ''
+let g:dirPs = ''
+let g:dirPv = ''
+let g:dirPx = ''
+let g:dirPz = ''
 
 " Command shortcuts (Optional. This dictionnary g:cmdDict may be moved to your vimrc and may contain the commands you want. It is used with the g:cmdExe function and the mapping <space>; and it is not absolutly part of this plugin. I put it inside the plugin because it may be a fast way to open directories). If commands were previously entered, you may use the up/down or ctrl+p/ctrl+n on the command line after doing <space>;
 " Uncomment and put this g:cmdDict variable and it's content to your vimrc or use it inside a utl link. Modify its content for your needs.
@@ -448,7 +536,39 @@ let g:dirMenuPath = 'I:/data/Scripts/vim/menu.txt'
 "     \ 'shortcuts'   : 'call g:dirSplit("i:/data/shortcuts")',
 " \}
 
-" Mappings
+" Autocommands
+
+" When leaving a tab or window, copy the path and the name of a file and put them to variable that keep previous paths.
+au! WinLeave,TabLeave
+au WinLeave,TabLeave * :call s:onLeave()
+function! s:onLeave()
+    if s:isDir() == 1
+        call g:cPath() 
+    elseif s:isDir() == 0
+        call g:cPathF() 
+    endif
+    " Keep previous paths in variables
+    let g:dirPc = g:dirCc
+    let g:dirPd = g:dirCd
+    let g:dirPf = g:dirCf
+    let g:dirPp = g:dirCp
+    let g:dirPs = g:dirCs
+    let g:dirPv = g:dirCv
+    let g:dirPx = g:dirCx
+    let g:dirPz = g:dirCz
+endfunction
+
+" When entering a tab or window copy the path and name of the file. 
+" If the file is the menu file, set the variables to the previous file's path. This allows to execute commands from the menu to the previous file in edition or directory listing selected file.
+au! WinEnter,TabEnter
+au WinEnter,TabEnter * :call s:onEnter()
+function! s:onEnter() 
+    if s:isDir() == 1
+        call g:cPath() 
+    elseif s:isDir() == 0
+        call g:cPathF() 
+    endif
+endfunction
 
 " change backslash to forwardslash on the current line
 nnoremap <silent> f/ :s/\\/\//g<cr>
@@ -471,8 +591,8 @@ nmap <space>; :exe 'call g:cmdExe("' . input('command shortcut: ') . '")'<cr>
 " show the command shorcuts
 nmap <space>: :echo g:cmdDict<cr>
 
-" execute command on the vim command line (fast if escape remapped to capslock)
-nmap <space><esc> :exe 'normal G' \| :r! 
+" execute command on the vim command line (fast if escape remapped to capslock). If no path specified, executes in the current path of current directory listing.
+nmap <space><esc> :call g:cPath() \| exe 'cd ' . g:dirCz \| exe 'normal G' \| :r! 
 
 " open default 'browsing history' file, useful for fast browsing
 nmap <space><tab> :call g:openDirList_()<cr>
@@ -505,26 +625,26 @@ nmap <space><f9> :let @*=substitute(expand("%:t"), '\', '/', 'g')<CR>
 nmap <space><f10> :let @*=substitute('<url://' . expand("%:p:h") . '/' . expand("%:t") . '#line=' . line(".") . '>', '\', '/', 'g')<CR>
 
 " reload directory (refresh)
-nmap <space>. :call g:cPath() \| call g:dir(@p)<cr>
+nmap <space>. :call g:cPath() \| call g:dir(g:dirCp)<cr>
 
 " Toggle show file owner
-nmap <space>- :call g:cPath() \| let g:dirOwner = g:dirOwner == '' ? '/q' : '' \| call g:dir(@p)<cr>
+nmap <space>- :call g:cPath() \| let g:dirOwner = g:dirOwner == '' ? '/q' : '' \| call g:dir(g:dirCp)<cr>
 
 " Mappings to change sorting
-nmap <space>1 :call g:cPath() \| let g:dirSort = '/o:gn' \| call g:dir(@p) \| echo 'sorted by name ascending'<cr>
-nmap <space>2 :call g:cPath() \| let g:dirSort = '/o:g-n' \| call g:dir(@p) \| echo 'sorted by name descending'<cr>
-nmap <space>3 :call g:cPath() \| let g:dirSort = '/o:ge' \| call g:dir(@p) \| echo 'sorted by type ascending'<cr>
-nmap <space>4 :call g:cPath() \| let g:dirSort = '/o:g-e' \| call g:dir(@p) \| echo 'sorted by type descending'<cr>
-nmap <space>5 :call g:cPath() \| let g:dirSort = '/o:gs' \| call g:dir(@p) \| echo 'sorted by size ascending'<cr>
-nmap <space>6 :call g:cPath() \| let g:dirSort = '/o:g-s' \| call g:dir(@p) \| echo 'sorted by size descending'<cr>
-nmap <space>7 :call g:cPath() \| let g:dirSort = '/o:gd' \| call g:dir(@p) \| echo 'sorted by date ascending'<cr>
-nmap <space>8 :call g:cPath() \| let g:dirSort = '/o:g-d' \| call g:dir(@p) \| echo 'sorted by date descending'<cr>
+nmap <space>1 :call g:cPath() \| let g:dirSort = '/o:gn' \| call g:dir(g:dirCp) \| echo 'sorted by name ascending'<cr>
+nmap <space>2 :call g:cPath() \| let g:dirSort = '/o:g-n' \| call g:dir(g:dirCp) \| echo 'sorted by name descending'<cr>
+nmap <space>3 :call g:cPath() \| let g:dirSort = '/o:ge' \| call g:dir(g:dirCp) \| echo 'sorted by type ascending'<cr>
+nmap <space>4 :call g:cPath() \| let g:dirSort = '/o:g-e' \| call g:dir(g:dirCp) \| echo 'sorted by type descending'<cr>
+nmap <space>5 :call g:cPath() \| let g:dirSort = '/o:gs' \| call g:dir(g:dirCp) \| echo 'sorted by size ascending'<cr>
+nmap <space>6 :call g:cPath() \| let g:dirSort = '/o:g-s' \| call g:dir(g:dirCp) \| echo 'sorted by size descending'<cr>
+nmap <space>7 :call g:cPath() \| let g:dirSort = '/o:gd' \| call g:dir(g:dirCp) \| echo 'sorted by date ascending'<cr>
+nmap <space>8 :call g:cPath() \| let g:dirSort = '/o:g-d' \| call g:dir(g:dirCp) \| echo 'sorted by date descending'<cr>
 
 " Mapping to change directory time display and sorting
-nmap <space>9 :call g:cPath() \| let g:dirTime = input("time (for display and sorting): [c]reation, [a]ccess, [w]rite: ", "w") \| let g:dirTime = '/t:' . g:dirTime \| call g:dir(@p)<cr>
+nmap <space>9 :call g:cPath() \| let g:dirTime = input("time (for display and sorting): [c]reation, [a]ccess, [w]rite: ", "w") \| let g:dirTime = '/t:' . g:dirTime \| call g:dir(g:dirCp)<cr>
 
 " Mapping to change directory attributes
-nmap <space>0 :call g:cPath() \| let g:dirAttributes = input("attributes (may be combined): (d)irectories, (h)idden, (s)ystem, (r)ead only, (a)rchive, (-)negation: ", "-h") \| let g:dirAttributes = '/a:' . g:dirAttributes \| call g:dir(@p)<cr>
+nmap <space>0 :call g:cPath() \| let g:dirAttributes = input("attributes (may be combined): (d)irectories, (h)idden, (s)ystem, (r)ead only, (a)rchive, (-)negation: ", "-h") \| let g:dirAttributes = '/a:' . g:dirAttributes \| call g:dir(g:dirCp)<cr>
 
 " Layout 1 (2 vertical panes)
 nmap <space>! :call g:dirTab('c:\') \| call g:dirVSplit('c:\')<cr> 
@@ -554,40 +674,40 @@ nmap <space>b :tabnew \| call g:listBuffers('tabnew\|b')<cr>
 nmap <space>B :tabnew \| call g:listBuffers('bd!')<cr>
 
 " duplicate (clone) file
-nmap <space>c :call g:cPath() \| exe '!copy ' @p . @f . ' ' @p . @f . '_' . substitute(strftime('%x_%X'), ':', '-', 'g') \| call g:dir(@p)<cr>
+nmap <space>c :call g:cPath() \| exe '!copy ' g:dirCs . ' ' . g:dirCs . '_' . substitute(strftime('%x_%X'), ':', '-', 'g') \| call g:dir(g:dirCp)<cr>
 
 " open directory in command prompt
-nmap <space>C :call g:cPath() \| silent exe '!start cmd /k "cd ' . @d . ' & cd ""' . @p . '"" & dir /o:g"'<cr>
+nmap <space>C :call g:cPath() \| silent exe '!start cmd /k "cd ' . g:dirCd . ' & cd ""' . g:dirCp . '"" & dir /o:g"'<cr>
 
 " new directory
-nmap <space>d :unlet! t \| let t = input('Directory name: ') \| :call g:cPath() \| call mkdir(t) \| call g:dir(@p)<cr>
+nmap <space>d :unlet! t \| let t = input('Directory name: ') \| :call g:cPath() \| call mkdir(t) \| call g:dir(g:dirCp)<cr>
 
 " delete file or directory
 nmap <space>D :call g:dirDelete()<cr>
 
 " open file in buffer
-nmap <space>e :call g:cPath() \| exe 'e! ' . @p . @f<cr>
+nmap <space>e :call g:cPath() \| exe 'e! ' . g:dirCs<cr>
 
 " set filter to show only certain files
-nmap <space>f :call g:cPath() \| let dirFilter = input('filter: ', '*.') \| call g:dir(@p)<cr>
+nmap <space>f :call g:cPath() \| let dirFilter = input('filter: ', '*.') \| call g:dir(g:dirCp)<cr>
 
 " list directory of current file
 nmap <space>F :exe "call g:dirSplit('" . expand('%:p:h') . "')"<cr>
 
 " grep file
-nmap <space>g :call g:cPath() \| exe 'tabe ' . @p . @f \| exe 'vimgrep ' . input('grep current file keywords: ') . ' %' \| exe 'copen'<cr>
+nmap <space>g :call g:cPath() \| exe 'tabe ' . g:dirCs \| exe 'vimgrep ' . input('grep current file keywords: ') . ' %' \| exe 'copen'<cr>
 
 " up directory
-nmap <space>h :call g:cPath() \| call g:dir(@p . '..')<cr>
+nmap <space>h :call g:cPath() \| call g:dir(g:dirCp . '..')<cr>
 
-" go to previous dir listing 
-nmap <space>i :call search(' .:\', 'b') \| exe 'normal zt0'<cr> 
+" go to previous dir listing
+nmap <space>i :call search(' .:\', 'b') \| exe 'normal zt0' \| call g:cPath() \| exe 'cd ' . g:dirCz<cr> 
 
 " open file in internet explorer
-nmap <space>I :call g:cPath() \| silent exe '!start "c:\program files\internet explorer\iexplore.exe" "' . @p . @f . '"'<cr>
+nmap <space>I :call g:cPath() \| silent exe '!start "c:\program files\internet explorer\iexplore.exe" "' . g:dirCs . '"'<cr>
 
 " preview file (include the file and undo "u" (or <space>k to remove it) (useful also to view content of lnk files and copy their target)
-nmap <space>j :call g:cPath() \| exe 'normal zt' \| exe 'r ' . @p . @f<cr>
+nmap <space>j :call g:cPath() \| exe 'normal zt' \| exe 'r ' . g:dirCs<cr>
 
 " show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to go return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
 nmap <space>J :split \| enew \| exe 'normal "HPGdd'<cr>
@@ -596,16 +716,16 @@ nmap <space>J :split \| enew \| exe 'normal "HPGdd'<cr>
 nmap <space>k :exe 'normal uj'<cr>
 
 " list directory (go inside subdir)
-nmap <space>l :call g:cPath() \| call g:dir(@p . @f)<cr>
+nmap <space>l :call g:cPath() \| call g:dir(g:dirCs)<cr>
 
 " list directory recursively (go inside subdir)
-nmap <space>L :call g:cPath() \| let g:dirRecursive = 1 \| call g:dir(@p . @f) \| let g:dirRecursive = 0<cr>
+nmap <space>L :call g:cPath() \| let g:dirRecursive = 1 \| call g:dir(g:dirCs) \| let g:dirRecursive = 0<cr>
 
 " go to next dir listing 
-nmap <space>m :call search(' .:\') \| exe 'normal zt2j0'<cr> 
+nmap <space>m :call search(' .:\') \| exe 'normal zt2j0' \| call g:cPath() \| exe 'cd ' . g:dirCz<cr> 
 
 " show contextual menu for actions on files
-nmap <space>M :call g:cPath() \| exe 'r ' . g:dirMenuPath \| exe 'normal ztk0'<cr> 
+nmap <space>M :call g:cPath() \| split \| exe 'e ' . g:dirMenuPath<cr> 
 
 " new file in new tab
 nmap <space>n :tabe!<cr>
@@ -614,13 +734,13 @@ nmap <space>n :tabe!<cr>
 nmap <space>N :enew!<cr>
 
 " open list dir using a lnk file (dosen't work for all lnk to directory files, to improve)
-nmap <space>o :call g:cPathLnk() \| call g:dir(@*)<cr>
+nmap <space>o :call g:cPathLnk() \| call g:dir(g:dirCs)<cr>
 
 " open file in notepad
-nmap <space>O :call g:cPath() \| silent exe '!start notepad.exe "' . @p . @f . '"'<cr>
+nmap <space>O :call g:cPath() \| silent exe '!start notepad.exe "' . g:dirCs . '"'<cr>
 
 " copy file path
-nmap <space>p :call g:cPath()<cr> 
+nmap <space>p :call g:cPath() \| let @c = g:dirCc \| let @d = g:dirCd \| let @f = g:dirCf \| let @p = g:dirCp \| let @* = g:dirCs \| let @v = g:dirCv \| let @x = g:dirCx \| let @z = g:dirCz<cr> 
 
 " show path
 nmap <space>P :pwd<cr> 
@@ -632,22 +752,22 @@ nmap <space>q :call g:dirVolumes(0)<cr>
 nmap <space>Q :call g:dirVolumes(1)<cr>
 
 " run file
-nmap <space>r :call g:cPath() \| silent exe '!start cmd /c "' . @p . @f . '"'<cr>
+nmap <space>r :call g:cPath() \| silent exe '!start cmd /c "' . g:dirCs . '"'<cr>
 
 " rename file or directory
-nmap <space>R :call g:cPath() \| exe 'call rename("' . @f . '","' . input('rename to: ', @f) . '")' \| call g:dir(@p)<cr>
+nmap <space>R :call g:cPath() \| exe 'call rename("' . g:dirCf . '","' . input('rename to: ', g:dirCf) . '")' \| call g:dir(g:dirCp)<cr>
 
 " open file in split
-nmap <space>s :call g:cPath() \| exe 'split \| enew \| e ' . @p . @f<cr>
+nmap <space>s :call g:cPath() \| exe 'split \| enew \| e ' . g:dirCs<cr>
 
 " list directory in a split window
-nmap <space>S :call g:cPath() \| exe 'split \| enew' \| call g:dir(@p)<cr>
+nmap <space>S :call g:cPath() \| exe 'split \| enew' \| call g:dir(g:dirCp)<cr>
 
 " open file in tab
-nmap <space>t :call g:cPath() \| exe 'tabe ' . @p . @f<cr>
+nmap <space>t :call g:cPath() \| exe 'tabe ' . g:dirCs<cr>
 
 " list current directory in a tab (no need to have already a directory browser opened) 
-nmap <space>T :call g:cPath() \| call g:dirTab(@p . @f)<cr>
+nmap <space>T :call g:cPath() \| call g:dirTab(g:dirCs)<cr>
 
 " open filename in clipboard in current tab
 nmap <space>u :exe 'e ' . getreg('*')<cr>
@@ -656,10 +776,10 @@ nmap <space>u :exe 'e ' . getreg('*')<cr>
 nmap <space>U :exe 'tabe ' . getreg('*')<cr>
 
 " open file in vsplit
-nmap <space>v :call g:cPath() \| exe 'vsplit \| enew \| e ' . @p . @f<cr>
+nmap <space>v :call g:cPath() \| exe 'vsplit \| enew \| e ' . g:dirCs<cr>
 
 " list current directory in a vsplit window
-nmap <space>V :call g:cPath() \| exe 'vsplit \| enew' \| call g:dir(@p)<cr>
+nmap <space>V :call g:cPath() \| exe 'vsplit \| enew' \| call g:dir(g:dirCp)<cr>
 
 " write append directory listing to disk
 nmap <space>w :exe 'silent! w! >> ' . input('save (append) directory listing to: ', g:dirListPath . 'dirlist_')<cr>
@@ -668,16 +788,16 @@ nmap <space>w :exe 'silent! w! >> ' . input('save (append) directory listing to:
 nmap <space>W :exe 'w! ' . input('save (overwrite) directory listing to: ', g:dirListPath . 'dirlist_')<cr>
 
 " open current directory in windows explorer
-nmap <space>x :call g:cPath() \| silent exe '!start explorer "' . @p . '"'<cr>
+nmap <space>x :call g:cPath() \| silent exe '!start explorer "' . g:dirCp . '"'<cr>
 
 " Show tree of directory and subdirectories using the tree command
-nmap <space>X :call g:cPath() \| call g:tree(@p . @f)<cr>
+nmap <space>X :call g:cPath() \| call g:tree(g:dirCs)<cr>
 
 " list the directory of the path in clipboard (with or without filename) in a new split window
-nmap <space>y :call g:dirSplit(fnamemodify(@*, ":p:h"))<cr>
+nmap <space>y :call g:dirSplit(fnamemodify(g:dirCs, ":p:h"))<cr>
 
 " list the directory of the path in clipboard (with or without filename) in the current buffer
-nmap <space>Y :call g:dir(fnamemodify(@*, ":p:h"))<cr>
+nmap <space>Y :call g:dir(fnamemodify(g:dirCs, ":p:h"))<cr>
 
 " open utl link under cursor in split windows (utl plugin required)
 nmap <space>z :Utl openLink underCursor split<cr>
@@ -708,70 +828,105 @@ function! s:isDir()
 endfunction
 
 " Diversify the path in other forms of path (4 paths format) 
-" 1- in @p (directory only) with \
-" 2- in @* (directory and filename) with \ 
-" 3- in @z (directory only) with /
-" 4- in @x (directory and filename) with /
-" 5- in @f (filename only)
+" 1- in p (directory only) with \
+" 2- in s (directory and filename) with \ 
+" 3- in z (directory only) with /
+" 4- in x (directory and filename) with /
+" 5- in f (filename only)
 function! s:divPath()
     " drive only
-    let @d = strpart(@p, 0, 2)
+    let g:dirCd = strpart(g:dirCp, 0, 2)
     " with \
-    let @p = @p . '\'
-    let @p = substitute(@p, '\\\\', '\\', '')
-    let @* = @p . @f 
+    let g:dirCp = g:dirCp . '\'
+    let g:dirCp = substitute(g:dirCp, '\\\\', '\\', '')
+    let g:dirCs = g:dirCp . g:dirCf
     " with \\
-    let @c = substitute(@p, '\\', '\\\\', 'g')
-    let @v = @c . @f
+    let g:dirCc = substitute(g:dirCp, '\\', '\\\\', 'g')
+    let g:dirCv = g:dirCc . g:dirCf
     " with /
-    let @z = substitute(@p, '\\', '/', 'g')
-    let @x = @z . @f
-    " append paths to browsing history (see usage above)
-    let @H = "<url:vimscript: call g:dirSplit('" . @z . "') \| call search('" . @f . "')>"
+    let g:dirCz = substitute(g:dirCp, '\\', '/', 'g')
+    let g:dirCx = g:dirCz . g:dirCf
 endfunction
 
 " If current file is a directoryBrowser, copy the path and the filename from the directory listing
 function! g:cPath()
-    if s:isDir() == 1
-        " On windows 2000 (39)
-        "exe 'normal mf039l"fy$' 
-        " On Windows 7 (36)
-        if g:dirOwner == ''
-            let l:nbChar = 36
-        else
-            let l:nbChar = 59
-        endif
-        exe 'normal mf0' . l:nbChar . 'l"fy$' 
-        call search(' .:\', 'b') 
-        exe 'normal l"py$`f' 
-        call s:divPath()
+    " On windows 2000 (39)
+    "exe 'normal mf039l"fy$' 
+    " On Windows 7 (36)
+    if g:dirOwner == ''
+        let l:nbChar = 36
+    else
+        let l:nbChar = 59
     endif
+
+    " This copy unamed register to temporary variable because it is overwritten
+    let l:u = getreg('"')
+
+    " copy register f to temporary variable
+    let l:f = @f
+    " mark current position using f
+    " move to beginning of file
+    " move right by nbChar
+    " copy string (filename) from current position to end of line to f register
+    exe 'normal mf0' . l:nbChar . 'l"fy$'
+    " copy register f to variable g:dirCp
+    let g:dirCf = @f
+    " set register f to its original content
+    let @f = l:f
+    
+    " find the path string of the current listing
+    call search(' .:\', 'b') 
+    " copy register p to temporary variable
+    let l:p = @p
+    " move right by 1 char
+    " yank the string from current position to end of line to p register
+    " return to position marked in f
+    normal l"py$`f'
+    " copy register p to variable g:dirCp
+    let g:dirCp = @p
+    " set register p to its original content
+    let @p = l:p
+
+    call s:divPath()
+
+    call setreg('"', l:u) " Give back the unamed register its content
+
+    " append paths to browsing history (see usage above)
+    let @H = "<url:vimscript: call g:dirSplit('" . g:dirCz . "') \| call search('" . g:dirCf . "')>"
 endfunction
 
 " If current file is not directoryBrowser but another file, get path and filename from its filename (%)
 " Used to put inside utl links so that the same links for example may be executed inside a file as well as from the contextual menu of directoryBrowser
 function! g:cPathF()
-    if s:isDir() == 0
-        let @p = expand('%:p:h')
-        let @f = expand('%:t') 
-        call s:divPath()
-    endif
+    let g:dirCp = expand('%:p:h')
+    let g:dirCf = expand('%:t') 
+    call s:divPath()
 endfunction
 
-" to copy the path from a lnk (shortcut) file to a directory (the lnk path is copied to the @* register)
+" to copy the path from a lnk (shortcut) file to a directory
 function! g:cPathLnk()
     call g:cPath()
-    exe 'r ' . @p . @f
+
+    " This copy unamed register to temporary variable because it is overwritten
+    let l:u = getreg('"')
+
+    exe 'r ' . g:dirCp . g:dirCf
     exe 'normal V'
     " remove null characters
     exe 's/\%x00//g'
     exe 'normal V$'
     call search('\.\\', 'b')
     call search('\.\.\\', 'b')
+    let l:s = @*
     exe 'normal hDF:h"*y$u'
+    let g:dirCs = @*
+    echo g:dirCs
+    let @* = l:s
     "NOTE: seach how to remove this message other than to write the file to disk
         "write! c:/t " write to remove message of line less after undo of r! type
         "use autocmd maybe to remove this message
+
+    call setreg('"', l:u) " Give back the unamed register its content
 endfunction
 
 " to list directories (in tab or not)
@@ -870,8 +1025,8 @@ endfunction
 function! g:dirDelete()
     if input("Delete this directory/file [(y)es/(n)o]? ", "") == "y"
         call g:cPath()
-        silent exe '!del /S/Q "' . @p . @f . '"'
-        silent exe '!rmdir /S/Q "' . @p . @f . '"'
+        silent exe '!del /S/Q "' . g:dirCs . '"'
+        silent exe '!rmdir /S/Q "' . g:dirCs . '"'
         call g:dir(@p)
     endif
 endfunction
