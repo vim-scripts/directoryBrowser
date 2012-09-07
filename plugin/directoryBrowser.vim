@@ -1,23 +1,23 @@
 " ------------------------------------------------------------------------------
 " File: plugin/directoryBrowser.vim - Directory Browser - 
-"			  Directory listing and file operation in vim
+"       Directory listing and file operation in vim
 " Author: Alexandre Viau <alexandreviau@gmail.com>
 " Maintainer: Alexandre Viau <alexandreviau@gmail.com>
 "
 " Licence: This program is free software; you can redistribute it and/or
-"		modify it under the terms of the GNU General Public License.
-"		See http://www.gnu.org/copyleft/gpl.txt
-"		This program is distributed in the hope that it will be
-"		useful, but WITHOUT ANY WARRANTY; without even the implied
-"		warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+"   modify it under the terms of the GNU General Public License.
+"   See http://www.gnu.org/copyleft/gpl.txt
+"   This program is distributed in the hope that it will be
+"   useful, but WITHOUT ANY WARRANTY; without even the implied
+"   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 "
-" Version: 4.0
+" Version: 4.1
 "
 " Files: plugin/directoryBrowser.vim
 "
 " History:
 " 1.0   2012-08-04
-"		    - First release
+"           - First release
 " 2.0   2012-08-09
 "           - Put 36 caracters instead of 39 between beginning of line and filename in cPath
 "           - Added \. to \a to \z and \A to \Z
@@ -66,6 +66,7 @@
 "           - <space>X to show directory and subdirectories structure of current directory using the "tree" command
 "           - <space>y list the directory of the path in clipboard (with or without filename) in a new split window
 "           - <space>Y list the directory of the path in clipboard (with or without filename) in the current buffer
+"           - <space><enter> open utl link under cursor (utl plugin required)
 "           - <space>z open utl link under cursor in a split window (utl plugin required)
 "           - <space>Z open utl link under cursor in tab (utl plugin required)
 "           - Remove dirOfStr language requirement. Searching for a language specific string was not needed. 
@@ -91,6 +92,11 @@
 "           - 2012-09-04 00:18:07 (mar.) The paths are not copied anymore to the registers at each operations, only when the user presses <space>p the paths are copied to register for pasting. 
 "           - 2012-08-31 05:36:44 (ven.) Modified <space><esc> to execute the command in the current path of the current directory listing if no path specified.
 "           - 2012-08-31 05:41:22 (ven.) Modified <space>i and <space>m to changed copy the path at the same time the listing is changed and to change vim's directory to the copied directory.
+"
+" 4.1       - 2012-09-04 22:08:16 (mar.) Fix 2 places in code (in dirDelete and recursive grep) that were not changed to use the path variables.
+"           - 2012-09-05 23:38:32 (mer.) Added <space><enter> open utl link under cursor (utl plugin required)
+"
+" Bugs:     - They are commands executed from utl who are added to the browsing history (register @H). I don't know why yet.
 "
 " Overview
 " --------
@@ -375,6 +381,7 @@
 " <space>X      Show tree of directory and subdirectories using the tree command
 " <space>y      list the directory of the path in clipboard (with or without filename) in a new buffer
 " <space>Y      list the directory of the path in clipboard (with or without filename) in the current buffer
+" <space><enter>open utl link under cursor (utl plugin required)
 " <space>z      open utl link under cursor in a split window (utl plugin required)
 " <space>Z      open utl link under cursor in tab (utl plugin required)
 " uu, uuu, UU, UUU, UUUU, uur abbreviations used with the utl plugin to insert links and references
@@ -464,6 +471,7 @@
 " - You may use the predifined layouts <space>!, <space>@, etc (see above) to view multiple directories in the same window. You may do your own layouts too using the same commands (10 windows is the maximum predefined, but you may add more if you have a large screen). I suggest that you map the :tabclose command to close the tab where there are layouts because the close buffer or close window command would then have to be repeated as many time as there are panes.
 "
 " Todo:
+" - do 2 separate commands to delete directory and delete file
 " - maybe put the browsing history @H in a file instead of a registry
 " - detect OS version (2000/xp/7) because in win2000 and 7 for example, the number of caracters before the filename in the dir listing is not the same, it is 39 in win2000 and 36 in windows 7, so add a condition there to select the number of caracters accordingly.
 " - Maybe to make is work with the ls command under linux.
@@ -799,6 +807,9 @@ nmap <space>y :call g:dirSplit(fnamemodify(g:dirCs, ":p:h"))<cr>
 " list the directory of the path in clipboard (with or without filename) in the current buffer
 nmap <space>Y :call g:dir(fnamemodify(g:dirCs, ":p:h"))<cr>
 
+" open utl link under cursor (utl plugin required)
+nmap <space><enter> :Utl ol<cr>
+
 " open utl link under cursor in split windows (utl plugin required)
 nmap <space>z :Utl openLink underCursor split<cr>
 
@@ -1010,7 +1021,7 @@ function! g:dirGrep()
     let s = input('grep files keywords: ')
     let i = input('include files: ', '*')
     tabe
-    let c = 'c:\\cygwin\\bin\\grep -n -r -i --include=' . i . ' ' . s . ' ' . @p
+    let c = 'c:\\cygwin\\bin\\grep -n -r -i --include=' . i . ' ' . s . ' ' . g:dirCp
     let r = system(c)
     let t = split(r, '\n') 
     tabe 
@@ -1027,7 +1038,7 @@ function! g:dirDelete()
         call g:cPath()
         silent exe '!del /S/Q "' . g:dirCs . '"'
         silent exe '!rmdir /S/Q "' . g:dirCs . '"'
-        call g:dir(@p)
+        call g:dir(g:dirCp)
     endif
 endfunction
 
