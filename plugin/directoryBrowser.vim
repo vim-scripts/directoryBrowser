@@ -11,7 +11,7 @@
 "   useful, but WITHOUT ANY WARRANTY; without even the implied
 "   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 "
-" Version: 4.1
+" Version: 4.2
 "
 " Files: plugin/directoryBrowser.vim
 "
@@ -95,8 +95,10 @@
 "
 " 4.1       - 2012-09-04 22:08:16 (mar.) Fix 2 places in code (in dirDelete and recursive grep) that were not changed to use the path variables.
 "           - 2012-09-05 23:38:32 (mer.) Added <space><enter> open utl link under cursor (utl plugin required)
+" 4.2
+"           - 2012-09-08 14:47:07 (sam.) Modified <space>h, <space>l behavior. Added the ability to remember last position of the cursor in a directory so that if a user returns to a previously browsed directory, the cursor will position itself to the file it was last time in that directory.
 "
-" Bugs:     - They are commands executed from utl who are added to the browsing history (register @H). I don't know why yet.
+" Bugs:     - They are commands executed from utl who are added to the browsing history (register @H), and to the dictionnary to remember the cursor position. I don't know why yet, I think it may be because of a character not escaped.
 "
 " Overview
 " --------
@@ -254,13 +256,13 @@
 " <space>f      Set filter to show only certain files example: *.txt or pic*.jpg
 " <space>F      list directory of current file
 " <space>g      grep current file (file is opened inside vim and vimgrep is used. No need for cygwin here.)
-" <space>h      go up a directory
+" <space>h      up directory, locate where the cursor was last time in this directory
 " <space>i      go to previous dir listing (if many listings were done in the same buffer it allows to go directly back to a previous listing)
 " <space>I      open file in internet explorer
 " <space>j      preview file (rapidly includes the file into the current buffer. Do <space>k to remove the file and go to next file in the dir listing. Doing successively <space>j and <space>k allows to preview quickly one file after another. If directory listings are saved to disk, they may be quickly opened using this mapping <space>j to list them and browse them.) 
 " <space>J      show browsing history (show list of paths and files browsed in this session. Useful to go back to previously browsed directories even to return to directories of files that were opened or run etc. The list may be saved with the <space>w command. Utl plugin required.
 " <space>k      used with preview file to remove the preview and go down one line to next file to preview
-" <space>l      list directory (go inside a directory)
+" <space>l      list directory (go inside subdir), locate where the cursor was last time in this directory
 " <space>L      list directory recursively (go inside subdir)
 " <space>m      go to next dir listing (if many listings were done in the same buffer it allows to go directly to the next listing)
 " <space>M      open a "contextual menu" in a split window to run operations on files. This requires the utl plugin. The contextual menu is a text file containing utl links that are executed using paths saved to registers. For example here's the content of a contextual menu file, it contains some links to compile csharp code and to edit the menu itself, you may create a menu to your liking.
@@ -511,6 +513,9 @@ let g:dirListPath = 'c:/'
 " Contextual menu path
 let g:dirMenuPath = 'I:\data\Scripts\vim\menu.txt'
 
+" To remember cursor position in directories 
+let g:dirCurPos = {}
+
 " Variable to contains the current paths variations (see s:DivPath() function)
 let g:dirCc = ''
 let g:dirCd = ''
@@ -555,7 +560,6 @@ function! s:onLeave()
     elseif s:isDir() == 0
         call g:cPathF() 
     endif
-    " Keep previous paths in variables
     let g:dirPc = g:dirCc
     let g:dirPd = g:dirCd
     let g:dirPf = g:dirCf
@@ -705,8 +709,8 @@ nmap <space>F :exe "call g:dirSplit('" . expand('%:p:h') . "')"<cr>
 " grep file
 nmap <space>g :call g:cPath() \| exe 'tabe ' . g:dirCs \| exe 'vimgrep ' . input('grep current file keywords: ') . ' %' \| exe 'copen'<cr>
 
-" up directory
-nmap <space>h :call g:cPath() \| call g:dir(g:dirCp . '..')<cr>
+" up directory, locate where the cursor was last time in this directory
+nmap <space>h :call g:dirGoUp()<cr>
 
 " go to previous dir listing
 nmap <space>i :call search(' .:\', 'b') \| exe 'normal zt0' \| call g:cPath() \| exe 'cd ' . g:dirCz<cr> 
@@ -723,13 +727,13 @@ nmap <space>J :split \| enew \| exe 'normal "HPGdd'<cr>
 " used with preview file to remove the preview and go down one line to next file to preview
 nmap <space>k :exe 'normal uj'<cr>
 
-" list directory (go inside subdir)
-nmap <space>l :call g:cPath() \| call g:dir(g:dirCs)<cr>
+" list directory (go inside subdir), locate where the cursor was last time in this directory
+nmap <space>l :call g:dirGoIn()<cr>
 
 " list directory recursively (go inside subdir)
-nmap <space>L :call g:cPath() \| let g:dirRecursive = 1 \| call g:dir(g:dirCs) \| let g:dirRecursive = 0<cr>
+nmap <space>L :let g:dirRecursive = 1 \| call g:dirGoIn() \| let g:dirRecursive = 0<cr>
 
-" go to next dir listing 
+" go to next dir listing
 nmap <space>m :call search(' .:\') \| exe 'normal zt2j0' \| call g:cPath() \| exe 'cd ' . g:dirCz<cr> 
 
 " show contextual menu for actions on files
@@ -986,7 +990,31 @@ function! g:dir(path)
     call search(' .:\', 'b')
     normal zt2j0
     exe 'cd ' . l:path
+
+    " Add the path to the browsing history
+    let g:dirCurPos[g:dirCz] = g:dirCf
 endfunction
+
+" List directory (go inside subdir), locate where the cursor was last time in this directory
+function! g:dirGoIn()
+    call g:cPath() 
+    call g:dir(g:dirCs)
+    call g:cPath()
+    if has_key(g:dirCurPos, g:dirCz)
+        call search(g:dirCurPos[g:dirCz])
+    endif
+endfunction
+
+" Go up a directory, return to previous filename, locate where the cursor was last time in this directory
+function! g:dirGoUp()
+    call g:cPath()
+    call g:dir(g:dirCp . '..')
+    call g:cPath()
+    if has_key(g:dirCurPos, g:dirCz)
+        call search(g:dirCurPos[g:dirCz])
+    endif
+endfunction
+
 
 " Show directory tree recursively of the selected directory
 function! g:tree(path)
