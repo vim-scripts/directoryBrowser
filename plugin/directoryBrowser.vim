@@ -98,7 +98,12 @@
 " 4.2
 "           - 2012-09-08 14:47:07 (sam.) Modified <space>h, <space>l behavior. Added the ability to remember last position of the cursor in a directory so that if a user returns to a previously browsed directory, the cursor will position itself to the file it was last time in that directory.
 "
-" Bugs:     - They are commands executed from utl who are added to the browsing history (register @H), and to the dictionnary to remember the cursor position. I don't know why yet, I think it may be because of a character not escaped.
+" 4.3       
+"           - 2012-09-11 22:11:06 (mar.) Corrected bug concerning the @H browsing history register.
+"           - 2012-09-11 22:11:46 (mar.) Corrected issues with cursor position on previously browsed files and directory.
+"           - 2012-09-11 21:30:55 (mar.) Corrected bug when first time vim opened and directory listed, there was an error message saying that empty dictionnary, that is because no directory was browsed so the variables to index the dictionnary were empty.
+"           - 2012-09-11 21:30:49 (mar.) Small amelioration of the isDir() detection function, added \s\{4\} to the time regex. I add problems with a file menu that this function was detecting as a directory listing but it was not.
+"           - 2012-09-11 22:36:21 (mar.) Two commands added to the compile/run sample menu in the help section, these 2 commands are to source a vim script and source a vim macro.
 "
 " Overview
 " --------
@@ -327,6 +332,8 @@
 "// <url:vimscript:echo   'php'                     | let t = g:dirPs | split | enew | exe \"r! Z:/Apps/Portable/php/php.exe \" . t>
 "-- <url:vimscript:echo   'pl/sql'                  | let t = g:dirPs | split | enew | exe \"r! sqlplus.exe -s hr/hr @\" . t>
 "' <url:vimscript:echo    'vbscript'                | let t = g:dirPs | split | enew | execute \"r! cscript.exe /nologo \" . t>
+" <url:vimscript:echo    'vim (source)'             | let t = g:dirPx | split | enew | exe \"source \" . t>
+" <url:vimscript:echo    'vim (macro)'              | let t = g:dirPx | split | enew | exe \"source! \" . t>
 "- C# code
 "// <url:vimscript:echo   'snippet (load)'          | source i:/data/scripts/vim/cs_snip.vim>
 "// <url:vimscript:echo   'snippet (edit)'          | split | e! i:/data/scripts/vim/cs_snip.vim>
@@ -831,7 +838,8 @@ function! s:isDir()
     endif
     " search for a time string
     let match = ''
-    let match = search('[0-9]\{2\}:[0-9]\{2\}', 'n')
+    "let match = search('[0-9]\{2\}:[0-9]\{2\}\\s\{4\}', 'n')
+    let match = search('[0-9]\{2\}:[0-9]\{2\}\s\{4\}', 'n')
     if match != ''
         let i = i + 1
     endif
@@ -874,40 +882,24 @@ function! g:cPath()
         let l:nbChar = 59
     endif
 
-    " This copy unamed register to temporary variable because it is overwritten
-    let l:u = getreg('"')
+    let l:u = getreg('"') " This copy unamed register to temporary variable because it is overwritten
+    let l:t = @t " copy register f to temporary variable
 
-    " copy register f to temporary variable
-    let l:f = @f
-    " mark current position using f
-    " move to beginning of file
-    " move right by nbChar
-    " copy string (filename) from current position to end of line to f register
-    exe 'normal mf0' . l:nbChar . 'l"fy$'
+    " copy filename
+    exe 'normal mf0' . l:nbChar . 'l"ty$'
     " copy register f to variable g:dirCp
-    let g:dirCf = @f
-    " set register f to its original content
-    let @f = l:f
+    let g:dirCf = @t
     
-    " find the path string of the current listing
-    call search(' .:\', 'b') 
-    " copy register p to temporary variable
-    let l:p = @p
-    " move right by 1 char
-    " yank the string from current position to end of line to p register
-    " return to position marked in f
-    normal l"py$`f'
+    " copy path
+    call search(' .:\', 'b') " find the path string of the current listing
+    normal l"ty$`f
     " copy register p to variable g:dirCp
-    let g:dirCp = @p
-    " set register p to its original content
-    let @p = l:p
+    let g:dirCp = @t
 
-    call s:divPath()
-
+    let @t = l:t " set register t to its original content
     call setreg('"', l:u) " Give back the unamed register its content
 
-    " append paths to browsing history (see usage above)
-    let @H = "<url:vimscript: call g:dirSplit('" . g:dirCz . "') \| call search('" . g:dirCf . "')>"
+    call s:divPath()
 endfunction
 
 " If current file is not directoryBrowser but another file, get path and filename from its filename (%)
@@ -935,7 +927,6 @@ function! g:cPathLnk()
     let l:s = @*
     exe 'normal hDF:h"*y$u'
     let g:dirCs = @*
-    echo g:dirCs
     let @* = l:s
     "NOTE: seach how to remove this message other than to write the file to disk
         "write! c:/t " write to remove message of line less after undo of r! type
@@ -991,30 +982,27 @@ function! g:dir(path)
     normal zt2j0
     exe 'cd ' . l:path
 
-    " Add the path to the browsing history
-    let g:dirCurPos[g:dirCz] = g:dirCf
+    call g:cPath()
+    if has_key(g:dirCurPos, g:dirCz)
+        call search(g:dirCurPos[g:dirCz])
+    endif
 endfunction
 
 " List directory (go inside subdir), locate where the cursor was last time in this directory
 function! g:dirGoIn()
     call g:cPath() 
+    " Add the path to the browsing history. If it is first directory listed from first time vim is opened, then there is no filename already and no directory.
+    let g:dirCurPos[g:dirCz] = g:dirCf
+    " append paths to browsing history (see usage above)
+    let @H = "<url:vimscript: call g:dirSplit('" . g:dirCz . "') \| call search('" . g:dirCf . "')>"
     call g:dir(g:dirCs)
-    call g:cPath()
-    if has_key(g:dirCurPos, g:dirCz)
-        call search(g:dirCurPos[g:dirCz])
-    endif
 endfunction
 
 " Go up a directory, return to previous filename, locate where the cursor was last time in this directory
 function! g:dirGoUp()
     call g:cPath()
     call g:dir(g:dirCp . '..')
-    call g:cPath()
-    if has_key(g:dirCurPos, g:dirCz)
-        call search(g:dirCurPos[g:dirCz])
-    endif
 endfunction
-
 
 " Show directory tree recursively of the selected directory
 function! g:tree(path)
@@ -1073,17 +1061,17 @@ endfunction
 " List the available volumes and some other details about shares and computers
 function! g:dirVolumes(showDetails)
     call append(line('$'), 'Volumes') 
-	for i in range(1, 26)
-	  let l:vol = nr2char(i + 96)
-      if isdirectory(l:vol . ':\')
-         call append(line('$'), l:vol . ':') 
-         " More slow when details are showned (names are showned using the vol command)
-         if (a:showDetails)
-             let l:volName = system('vol ' . l:vol . ':')
-             call append(line('$'), l:volName)
-         endif
-      endif   
-	endfor
+    for i in range(1, 26)
+        let l:vol = nr2char(i + 96)
+        if isdirectory(l:vol . ':\')
+            call append(line('$'), l:vol . ':') 
+            " More slow when details are showned (names are showned using the vol command)
+            if (a:showDetails)
+                let l:volName = system('vol ' . l:vol . ':')
+                call append(line('$'), l:volName)
+            endif
+        endif   
+    endfor
     normal G
     " Add some information about shares and computers to the volume list
     if (a:showDetails)
