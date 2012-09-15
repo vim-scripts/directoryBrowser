@@ -105,6 +105,9 @@
 "           - 2012-09-11 21:30:49 (mar.) Small amelioration of the isDir() detection function, added \s\{4\} to the time regex. I add problems with a file menu that this function was detecting as a directory listing but it was not.
 "           - 2012-09-11 22:36:21 (mar.) Two commands added to the compile/run sample menu in the help section, these 2 commands are to source a vim script and source a vim macro.
 "
+" 4.4
+"           - 15.09.2012 11:42:05 (??) Small modification to the search string for finding previously browsed directory.
+"
 " Overview
 " --------
 " This plugin is currently only for Windows but could be easily ported for another OS. Some optional features require cygwin and/or the utl plugin.
@@ -984,7 +987,8 @@ function! g:dir(path)
 
     call g:cPath()
     if has_key(g:dirCurPos, g:dirCz)
-        call search(g:dirCurPos[g:dirCz])
+        call search('\s\{10\}' . g:dirCurPos[g:dirCz])
+        normal w
     endif
 endfunction
 
